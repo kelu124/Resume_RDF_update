@@ -196,6 +196,19 @@ python cv_to_knowledge_graph.py my_cv.txt --validate
 python cv_to_knowledge_graph.py my_cv.pdf --model claude-opus-4-6
 ```
 
+```bash
+python cv_to_knowledge_graph.py my_cv.pdf
+
+# Full options
+python cv_to_knowledge_graph.py my_cv.pdf \
+  --output graph.ttl \
+  --context "Energy and transport sectors, output in English." \
+  --model claude-opus-4-6 \
+  --max-tokens 60000 \
+  --validate \
+  --quiet
+```
+
 The API key can be passed via environment variable (recommended) or flag:
 
 ```bash
@@ -203,6 +216,9 @@ export ANTHROPIC_API_KEY="sk-ant-..."
 # or
 python cv_to_knowledge_graph.py my_cv.pdf --api-key sk-ant-...
 ```
+
+
+
 
 ---
 
