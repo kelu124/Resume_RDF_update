@@ -31,7 +31,9 @@ pyarrow==24.0.0
 pydantic==2.13.3
 pydantic_core==2.46.3
 pydeck==0.9.2
+pyparsing==3.3.2
 python-dateutil==2.9.0.post0
+rdflib==7.6.0
 referencing==0.37.0
 requests==2.33.1
 rpds-py==0.30.0
