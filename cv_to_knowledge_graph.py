@@ -70,6 +70,8 @@ import textwrap
 
 import anthropic
 
+import llm_cache
+
 
 # ===========================================================================
 # ONTOLOGY SYSTEM PROMPT
@@ -343,11 +345,22 @@ def call_anthropic(
     """
     Call the Anthropic API using streaming and return (turtle_text, usage_dict).
 
+    Responses are cached in cache/<sha256>.json keyed on (system prompt, model,
+    user content). Delete the cache file to force a fresh API call.
+
     Streaming is required when max_tokens is large enough to risk exceeding
     the 10-minute non-streaming request window.
     """
-    client = anthropic.Anthropic(api_key=api_key)
     content = build_user_content(file_path, extra_context)
+    key = llm_cache.cache_key(SYSTEM_PROMPT, model, content)
+
+    hit = llm_cache.load(key)
+    if hit is not None:
+        if verbose:
+            print(f"Cache hit ({key[:12]}…) — skipping API call.")
+        return hit
+
+    client = anthropic.Anthropic(api_key=api_key)
 
     if verbose:
         print("Calling Anthropic API (streaming)...", end=" ", flush=True)
@@ -373,6 +386,7 @@ def call_anthropic(
         "input_tokens":  final.usage.input_tokens,
         "output_tokens": final.usage.output_tokens,
     }
+    llm_cache.save(key, ttl, usage)
     return ttl, usage
 
 
