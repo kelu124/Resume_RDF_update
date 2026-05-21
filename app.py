@@ -5,12 +5,7 @@ Run:  streamlit run app.py
 """
 
 import base64
-import io
-import smtplib
 import textwrap
-from email.mime.application import MIMEApplication
-from email.mime.multipart import MIMEMultipart
-from email.mime.text import MIMEText
 
 import anthropic
 import streamlit as st
@@ -299,63 +294,6 @@ def call_anthropic(file_bytes: bytes, file_name: str, extra_context: str) -> tup
     return ttl, usage
 
 
-def send_email(
-    cv_bytes: bytes,
-    cv_filename: str,
-    ttl_text: str,
-    ttl_filename: str,
-    person_name: str,
-) -> None:
-    """
-    Send the CV and the generated .ttl graph to the configured recipient
-    using Gmail SMTP with an App Password.
-
-    Gmail App Password setup
-    ────────────────────────
-    1. Enable 2-Step Verification on your Google account:
-       https://myaccount.google.com/security
-    2. Go to App Passwords:
-       https://myaccount.google.com/apppasswords
-    3. Choose app "Mail" and device "Other", give it a name, click Generate.
-    4. Copy the 16-character password into secrets.toml → email.sender_app_password
-    """
-    cfg = st.secrets["email"]
-    sender     = cfg["sender_address"]
-    app_pwd    = cfg["sender_app_password"]
-    recipient  = cfg["recipient"]
-
-    msg = MIMEMultipart()
-    msg["From"]    = sender
-    msg["To"]      = recipient
-    msg["Subject"] = f"CV Knowledge Graph — {person_name}"
-
-    body = MIMEText(
-        f"Please find attached:\n"
-        f"  • The original CV file ({cv_filename})\n"
-        f"  • The generated RDF knowledge graph ({ttl_filename})\n\n"
-        f"Generated automatically by the CV → Knowledge Graph app.",
-        "plain",
-    )
-    msg.attach(body)
-
-    # attach original CV
-    cv_part = MIMEApplication(cv_bytes, Name=cv_filename)
-    cv_part["Content-Disposition"] = f'attachment; filename="{cv_filename}"'
-    msg.attach(cv_part)
-
-    # attach .ttl graph
-    ttl_bytes = ttl_text.encode("utf-8")
-    ttl_part = MIMEApplication(ttl_bytes, Name=ttl_filename)
-    ttl_part["Content-Disposition"] = f'attachment; filename="{ttl_filename}"'
-    msg.attach(ttl_part)
-
-    with smtplib.SMTP("smtp.gmail.com", 587) as server:
-        server.ehlo()
-        server.starttls()
-        server.login(sender, app_pwd)
-        server.sendmail(sender, recipient, msg.as_string())
-
-
 def count_triples(ttl: str) -> int:
     return sum(
         1 for line in ttl.splitlines()
@@ -427,27 +365,6 @@ if run and uploaded:
             f"📊 Tokens used: {usage['input_tokens']:,} in / "
             f"{usage['output_tokens']:,} out"
         )
-
-        # ── step 2: send email ───────────────────────────────────────────
-        st.write("📧 Sending files by email…")
-        # try to extract person name for the email subject
-        person_name = stem  # fallback to filename stem
-        for line in ttl.splitlines():
-            if "foaf:name" in line:
-                import re
-                m = re.search(r'foaf:name\s+"([^"]+)"', line)
-                if m:
-                    person_name = m.group(1)
-                    break
-
-        try:
-            send_email(file_bytes, file_name, ttl, ttl_name, person_name)
-            st.write(
-                f"✅ Email sent to **{st.secrets['email']['recipient']}** "
-                f"with `{file_name}` and `{ttl_name}`"
-            )
-        except Exception as exc:
-            st.warning(f"Graph generated but email failed: {exc}")
 
         status.update(label="Done!", state="complete", expanded=False)
 
