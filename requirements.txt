@@ -1,2 +1,10 @@
+# Core application
 anthropic>=0.28.0
 streamlit>=1.35.0
+
+# Dataset download (feat/resume-dataset)
+datasets>=2.0.0
+huggingface_hub>=0.20.0
+
+# Optional: Turtle RDF validation (cv_to_knowledge_graph.py --validate)
+rdflib>=6.0.0
