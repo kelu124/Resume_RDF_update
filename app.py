@@ -127,7 +127,12 @@ SYSTEM_PROMPT = textwrap.dedent("""    You are a CV parser that outputs ONLY val
         cvx:endDate             "YYYY-MM-DD"^^xsd:date ;  # omit if ongoing
         cvx:activitiesPerformed "What the person did, in detail." ;
         cvx:benefitsDelivered   "Outcomes and measurable impact." ;
-        cvx:domain              "energy" .  # repeat triple for multiple sectors
+        cvx:domain              "energy" ;  # repeat triple for multiple sectors
+        cvx:usesSkill           :skill_SLUG .  # repeat for each skill used on this project; reference IRIs from the SKILLS section
+
+    For cvx:usesSkill, reference the IRI of an existing :skill_SLUG node defined in
+    the SKILLS section. Only link skills that were explicitly applied on this project.
+    Repeat the triple for each relevant skill.
 
     Allowed domain values: energy, transportation, finance, healthcare, industry,
     telecom, public-sector, retail, technology, environment, other.

@@ -131,11 +131,16 @@ SYSTEM_PROMPT = textwrap.dedent("""\
         cvx:endDate             "YYYY-MM-DD"^^xsd:date ;
         cvx:activitiesPerformed "What the person did, in detail." ;
         cvx:benefitsDelivered   "Outcomes and measurable impact." ;
-        cvx:domain              "energy" .
+        cvx:domain              "energy" ;
+        cvx:usesSkill           :skill_SLUG .   # repeat for each skill used on this project
 
     Allowed domain values: energy, transportation, finance, healthcare, industry,
     telecom, public-sector, retail, technology, environment, other.
     Repeat cvx:domain triple for multiple sectors.
+
+    For cvx:usesSkill, reference the IRI of an existing :skill_SLUG node defined in
+    the SKILLS section. Only link skills that were explicitly applied on this project.
+    Repeat the triple for each relevant skill.
 
     SKILLS
     :skill_SLUG a cv:Skill ;
