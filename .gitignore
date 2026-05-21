@@ -225,5 +225,8 @@ __marimo__/
 # Streamlit
 .streamlit/secrets.toml
 
+# Dataset — raw files committed at small size; ignore large re-downloads
+data/*.parquet
+
 # API response cache (feat/api-cache)
 cache/
