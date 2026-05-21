@@ -24,182 +24,120 @@ SOFTWARE.
 
 # 🕸️ CV → RDF Knowledge Graph
 
-> Parse a CV into a structured [Turtle RDF](https://www.w3.org/TR/turtle/) knowledge graph using the [ResumeRDF ontology](http://rdfs.org/resume-rdf/) — via a password-protected Streamlit web app or a standalone Python script.
+> Parse a CV into a structured [Turtle RDF](https://www.w3.org/TR/turtle/) knowledge graph using the [ResumeRDF ontology](http://rdfs.org/resume-rdf/) — as a **Python library**, a CLI tool, or a Streamlit web app.
 
 ---
 
 ## Overview
 
-This tool takes a CV (PDF or plain text) and uses the [Anthropic Claude API](https://www.anthropic.com) to extract structured information and serialise it as **Turtle RDF**, ready to load into any SPARQL-capable triplestore (GraphDB, Apache Jena Fuseki, Stardog, Oxigraph, …).
+This project converts a CV (PDF or plain text) into **Turtle RDF** using the [Anthropic Claude API](https://www.anthropic.com). The core logic lives in the `resume_rdf` Python package, which can be installed and imported independently of the web app or CLI.
 
-The graph captures not just employment history and skills, but also the **project-level detail** that a standard CV ontology misses: client names, roles, activities performed, benefits delivered, and domain tags — as well as MOOCs, ad-hoc trainings, personal projects, and publications.
-
-After each run, both the original CV and the generated `.ttl` file are **automatically emailed** to a configured recipient.
-
----
-
-## Ontology
-
-The graph uses a combination of established vocabularies and a lightweight custom extension:
-
-| Prefix | Namespace | Purpose |
-|--------|-----------|---------|
-| `cv:` | `http://purl.org/captsolo/resume-rdf/0.2/cv#` | ResumeRDF core — person, work history, education, skills |
-| `cvb:` | `http://purl.org/captsolo/resume-rdf/0.2/base#` | ResumeRDF base taxonomy |
-| `cvx:` | `http://example.org/cv-extension#` | Custom extension — projects, trainings, MOOCs, personal projects |
-| `foaf:` | `http://xmlns.com/foaf/0.1/` | Person identity |
-| `bibo:` | `http://purl.org/ontology/bibo/` | Publications (articles, reports, patents, …) |
-| `dcterms:` | `http://purl.org/dc/terms/` | Publication metadata (title, date) |
-| `xsd:` | `http://www.w3.org/2001/XMLSchema#` | Typed literals (dates, integers) |
-
-### Node types extracted
-
-| RDF Class | Linked via | Description |
-|-----------|-----------|-------------|
-| `foaf:Person` + `cv:CV` | — | Identity and CV root |
-| `cv:WorkHistory` | `cv:hasWorkHistory` | Employment positions |
-| `cv:Company` | `cv:employedIn` | Employers and clients |
-| `cvx:Project` | `cvx:hasProject` | Client engagements with role, activities, benefits, domain tags |
-| `cv:Skill` | `cv:hasSkill` | Technical and professional skills |
-| `cv:Education` | `cv:hasEducation` | Formal degrees |
-| `cvx:MOOC` | `cvx:hasMOOC` | Online courses (Coursera, edX, Udemy, …) |
-| `cvx:Training` | `cvx:hasTraining` | Workshops, certifications, bootcamps |
-| `cvx:PersonalProject` | `cvx:hasPersonalProject` | Open-source, hardware, community projects |
-| `bibo:AcademicArticle` / `bibo:Report` / … | `cvx:hasPublication` | Papers, reports, patents, articles |
-
-### Project-level detail (`cvx:Project`)
-
-Each professional engagement captures:
-
-```turtle
-:proj_example a cvx:Project ;
-    cvx:projectName         "Smart Grid Analytics" ;
-    cvx:projectDescription  "Digital twin platform for grid monitoring." ;
-    cvx:clientName          "National Grid" ;
-    cvx:roleTitle           "Technical Lead" ;
-    cvx:startDate           "2022-03-01"^^xsd:date ;
-    cvx:endDate             "2023-06-30"^^xsd:date ;
-    cvx:activitiesPerformed "Designed the data pipeline; led stakeholder workshops." ;
-    cvx:benefitsDelivered   "30% reduction in fault detection time." ;
-    cvx:domain              "energy" ;
-    cvx:domain              "technology" .
-```
+The graph captures not just employment history and skills, but also **project-level detail**: client names, roles, activities, benefits, and domain tags — plus MOOCs, certifications, personal projects, and publications.
 
 ---
 
 ## Project structure
 
 ```
-.
-├── app.py                        # Streamlit web application
-├── requirements.txt
-├── .gitignore
-└── .streamlit/
-    └── secrets.toml              # ← create from secrets.toml.example (never commit)
+resume_rdf/                 ← importable Python library
+├── __init__.py             public API
+├── ontology.py             SYSTEM_PROMPT + namespace constants
+├── parsing.py              content builders, Turtle helpers
+├── cache.py                file-based SHA-256 response cache
+└── api.py                  generate_graph_from_file / _from_bytes
+
+app.py                      Streamlit web app (thin wrapper)
+cv_to_knowledge_graph.py    CLI script / cv-to-rdf entry-point (thin wrapper)
+pyproject.toml              pip-installable package definition
+download_data.py            dataset download helper
+data/                       master_resumes.jsonl (1 866 records, MIT)
 ```
 
 ---
 
 ## Installation
 
+### As a library
+
+```bash
+pip install .
+# With optional extras:
+pip install ".[app]"        # adds streamlit
+pip install ".[validate]"   # adds rdflib for Turtle validation
+pip install ".[dataset]"    # adds datasets + huggingface_hub
+pip install ".[all]"        # everything
+```
+
+### From source (dev)
+
 ```bash
 git clone https://github.com/kelu124/Resume_RDF_update.git
 cd Resume_RDF_update
-pip install -r requirements.txt
+pip install -e ".[all]"
 ```
-
-**Requirements:**
-
-```
-anthropic>=0.28.0
-streamlit>=1.35.0
-```
-
-> `rdflib` is optional — install it if you want Turtle validation in the CLI script:
-> ```bash
-> pip install rdflib
-> ```
 
 ---
 
-## Configuration
+## Library usage
 
-Copy the example secrets file and fill in your values:
+```python
+from resume_rdf import generate_graph_from_file, generate_graph_from_bytes
 
-```bash
-mkdir -p .streamlit
-cp secrets.toml.example .streamlit/secrets.toml
+# From a file path (CLI / batch use)
+turtle, usage = generate_graph_from_file(
+    "my_cv.pdf",
+    api_key="sk-ant-...",                 # or set ANTHROPIC_API_KEY
+    extra_context="Energy sector, English labels.",
+    model="claude-sonnet-4-6",            # default
+)
+print(turtle)                             # valid Turtle RDF
+
+# From bytes (web / in-memory use)
+with open("my_cv.pdf", "rb") as f:
+    turtle, usage = generate_graph_from_bytes(
+        f.read(), "my_cv.pdf", api_key="sk-ant-..."
+    )
+
+print(f"~{usage['output_tokens']:,} output tokens")
 ```
 
-Edit `.streamlit/secrets.toml`:
+### Utilities
 
-```toml
-[app]
-password = "your-app-password"
+```python
+from resume_rdf import count_triples, extract_person_name, validate_turtle
 
-[anthropic]
-api_key = "sk-ant-..."
-
-[email]
-sender_address      = "your-sender@gmail.com"
-sender_app_password = "xxxx xxxx xxxx xxxx"
-recipient           = "recipient@example.com"
+print(count_triples(turtle))       # ~420
+print(extract_person_name(turtle)) # "Jane Smith"
+validate_turtle(turtle)            # True (requires rdflib)
 ```
 
-### Getting an Anthropic API key
+### Ontology constants
 
-1. Sign up or log in at [console.anthropic.com](https://console.anthropic.com)
-2. Go to **Settings → API Keys** → **Create Key**
-3. Copy the `sk-ant-...` key into `secrets.toml`
+```python
+from resume_rdf import NAMESPACES, SYSTEM_PROMPT
 
-### Getting a Gmail App Password
+# NAMESPACES is a dict: {"cv": "http://...", "cvx": "http://...", ...}
+for prefix, uri in NAMESPACES.items():
+    print(f"@prefix {prefix}: <{uri}> .")
+```
 
-The app uses Gmail SMTP to send results by email. A Gmail App Password is required — this is **not** your regular Gmail password.
+### Caching
 
-1. Enable **2-Step Verification** on your Google account: [myaccount.google.com/security](https://myaccount.google.com/security)
-2. Go to **App Passwords**: [myaccount.google.com/apppasswords](https://myaccount.google.com/apppasswords)
-3. Name it (e.g. *CV Graph App*) and click **Generate**
-4. Copy the 16-character code into `secrets.toml` → `sender_app_password`
+Responses are cached in `cache/<sha256>.json` keyed on the (system prompt,
+model, user content) triple.  Delete any `.json` file to bust the cache for
+a specific input, or set `LLM_CACHE_DIR` to override the cache directory.
 
 ---
 
-## Usage
+## CLI
 
-### Streamlit web app
-
-```bash
-streamlit run app.py
-```
-
-Opens at `http://localhost:8501`. After signing in:
-
-1. Upload your CV (PDF, `.txt`, or `.md`)
-2. Optionally add a context note (language preference, main sectors, etc.)
-3. Click **Generate knowledge graph**
-4. Download the `.ttl` file — it is also emailed automatically
-
-### CLI script
+After `pip install .` a `cv-to-rdf` command is available:
 
 ```bash
 # Basic — writes <cv_stem>.ttl next to the input
-python cv_to_knowledge_graph.py my_cv.pdf
+cv-to-rdf my_cv.pdf
 
-# Custom output path + context hint
-python cv_to_knowledge_graph.py my_cv.pdf \
-  --output graph.ttl \
-  --context "I work mainly in energy and transport. Output in English."
-
-# Validate the Turtle syntax with rdflib
-python cv_to_knowledge_graph.py my_cv.txt --validate
-
-# Use a different model
-python cv_to_knowledge_graph.py my_cv.pdf --model claude-opus-4-6
-```
-
-```bash
-python cv_to_knowledge_graph.py my_cv.pdf
-
-# Full options
+# Or run the script directly
 python cv_to_knowledge_graph.py my_cv.pdf \
   --output graph.ttl \
   --context "Energy and transport sectors, output in English." \
@@ -214,60 +152,120 @@ The API key can be passed via environment variable (recommended) or flag:
 ```bash
 export ANTHROPIC_API_KEY="sk-ant-..."
 # or
-python cv_to_knowledge_graph.py my_cv.pdf --api-key sk-ant-...
+cv-to-rdf my_cv.pdf --api-key sk-ant-...
 ```
-
-
-
 
 ---
 
-## Loading the graph into a triplestore
+## Streamlit web app
 
-Once you have a `.ttl` file, load it into your triplestore of choice:
-
-**Apache Jena Fuseki**
 ```bash
+streamlit run app.py
+```
+
+Opens at `http://localhost:8501`. After signing in:
+
+1. Upload your CV (PDF, `.txt`, or `.md`)
+2. Optionally add a context note (language preference, main sectors, etc.)
+3. Click **Generate knowledge graph**
+4. Download the `.ttl` file
+
+### Configuration
+
+```bash
+mkdir -p .streamlit
+cp secrets.toml.example .streamlit/secrets.toml
+```
+
+Edit `.streamlit/secrets.toml`:
+
+```toml
+[app]
+password = "your-app-password"
+
+[anthropic]
+api_key = "sk-ant-..."
+```
+
+---
+
+## Ontology
+
+The graph combines established vocabularies with a lightweight custom extension:
+
+| Prefix | Namespace | Purpose |
+|--------|-----------|---------|
+| `cv:` | `http://purl.org/captsolo/resume-rdf/0.2/cv#` | ResumeRDF core |
+| `cvb:` | `http://purl.org/captsolo/resume-rdf/0.2/base#` | ResumeRDF base taxonomy |
+| `cvx:` | `http://example.org/cv-extension#` | Custom extension |
+| `foaf:` | `http://xmlns.com/foaf/0.1/` | Person identity |
+| `bibo:` | `http://purl.org/ontology/bibo/` | Publications |
+| `dcterms:` | `http://purl.org/dc/terms/` | Publication metadata |
+| `xsd:` | `http://www.w3.org/2001/XMLSchema#` | Typed literals |
+
+### Node types
+
+| RDF Class | Linked via | Description |
+|-----------|-----------|-------------|
+| `foaf:Person` + `cv:CV` | — | Identity and CV root |
+| `cv:WorkHistory` | `cv:hasWorkHistory` | Employment positions |
+| `cv:Company` | `cv:employedIn` | Employers and clients |
+| `cvx:Project` | `cvx:hasProject` | Client engagements |
+| `cv:Skill` | `cv:hasSkill` | Technical and professional skills |
+| `cv:Education` | `cv:hasEducation` | Formal degrees |
+| `cvx:MOOC` | `cvx:hasMOOC` | Online courses |
+| `cvx:Training` | `cvx:hasTraining` | Workshops, certifications |
+| `cvx:PersonalProject` | `cvx:hasPersonalProject` | Open-source, hardware, community projects |
+| `bibo:AcademicArticle` / … | `cvx:hasPublication` | Papers, reports, patents |
+
+Projects also carry `cvx:usesSkill` links to the `cv:Skill` nodes used on that engagement.
+
+---
+
+## Loading into a triplestore
+
+```bash
+# Apache Jena Fuseki
 curl -X PUT --data-binary @graph.ttl \
   -H "Content-Type: text/turtle" \
   http://localhost:3030/cv/data
 ```
 
-**GraphDB** — use the **Import → Upload RDF files** UI, or the REST API.
-
-**Oxigraph** (in-process, Python)
 ```python
+# Oxigraph (in-process)
 from pyoxigraph import Store
 store = Store()
 store.load(open("graph.ttl", "rb"), mime_type="text/turtle")
 ```
 
-You can then query with SPARQL. Example — list all projects tagged with the `energy` domain:
-
 ```sparql
+-- SPARQL: projects that used Python
 PREFIX cvx: <http://example.org/cv-extension#>
+PREFIX cv:  <http://purl.org/captsolo/resume-rdf/0.2/cv#>
 
-SELECT ?name ?client ?role WHERE {
+SELECT ?projName ?client WHERE {
   ?proj a cvx:Project ;
-        cvx:domain "energy" ;
-        cvx:projectName ?name ;
+        cvx:projectName ?projName ;
         cvx:clientName  ?client ;
-        cvx:roleTitle   ?role .
+        cvx:usesSkill   ?skill .
+  ?skill cv:skillName "Python" .
 }
-ORDER BY ?name
 ```
 
 ---
 
-## Notes
+## Resume dataset
 
-- The app uses **streaming** (`client.messages.stream`) for the Anthropic API call, which is required when `max_tokens` is large enough to potentially exceed the 10-minute request window.
-- The model used is `claude-sonnet-4-6`. Swap for `claude-opus-4-6` in `app.py` if you need maximum extraction quality on very dense CVs.
-- Dates are inferred from context when not explicitly stated; review the output for approximations (year-only dates default to `YYYY-01-01`).
-- The `.streamlit/secrets.toml` file is listed in `.gitignore` and must **never** be committed to version control.
+`data/master_resumes.jsonl` contains 1 866 real and synthetic résumés from
+[datasetmaster/resumes](https://huggingface.co/datasets/datasetmaster/resumes)
+(HuggingFace, MIT licence).  Re-download with:
+
+```bash
+python download_data.py
+```
 
 ---
 
 ## License
 
-MIT License — see the header of this file or [choosealicense.com/licenses/mit](https://choosealicense.com/licenses/mit/) for the full text.
+MIT — see the header of this file or [choosealicense.com/licenses/mit](https://choosealicense.com/licenses/mit/).
