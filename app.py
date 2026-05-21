@@ -10,6 +10,8 @@ import textwrap
 import anthropic
 import streamlit as st
 
+import llm_cache
+
 # ── page config ─────────────────────────────────────────────────────────────
 st.set_page_config(
     page_title="CV → Knowledge Graph",
@@ -267,14 +269,27 @@ def build_user_content(file_bytes: bytes, file_name: str, extra_context: str) ->
         ]
 
 
+_MODEL = "claude-sonnet-4-6"
+
+
 def call_anthropic(file_bytes: bytes, file_name: str, extra_context: str) -> tuple[str, dict]:
-    """Call the Anthropic API using streaming (required for large max_tokens)."""
-    client = anthropic.Anthropic(api_key=st.secrets["anthropic"]["api_key"])
+    """Call the Anthropic API using streaming (required for large max_tokens).
+
+    Responses are cached in cache/<sha256>.json keyed on (system prompt, model,
+    user content). Delete the cache file to force a fresh API call.
+    """
     user_content = build_user_content(file_bytes, file_name, extra_context)
+    key = llm_cache.cache_key(SYSTEM_PROMPT, _MODEL, user_content)
+
+    hit = llm_cache.load(key)
+    if hit is not None:
+        return hit
+
+    client = anthropic.Anthropic(api_key=st.secrets["anthropic"]["api_key"])
 
     raw_parts = []
     with client.messages.stream(
-        model="claude-sonnet-4-6",
+        model=_MODEL,
         max_tokens=60000,
         system=SYSTEM_PROMPT,
         messages=[{"role": "user", "content": user_content}],
@@ -296,6 +311,7 @@ def call_anthropic(file_bytes: bytes, file_name: str, extra_context: str) -> tup
         "input_tokens": final.usage.input_tokens,
         "output_tokens": final.usage.output_tokens,
     }
+    llm_cache.save(key, ttl, usage)
     return ttl, usage
 
 
