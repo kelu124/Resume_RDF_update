@@ -16,7 +16,8 @@ Quick start::
 
 The library exposes two generation functions, utility helpers, the ontology
 constants used by the parser, dataset access utilities, a cross-TTL entity
-reconciler, and a CV quality-audit / field-update module.
+reconciler, a CV quality-audit / field-update module, a graph visualiser,
+and a TTL → Markdown exporter.
 """
 
 from resume_rdf.api import (
@@ -51,6 +52,8 @@ from resume_rdf.qa import (
     audit_experience,
     update_field,
 )
+from resume_rdf.viz import visualize_cv
+from resume_rdf.export import ttl_to_markdown
 
 __version__ = "0.1.0"
 __all__ = [
@@ -84,4 +87,8 @@ __all__ = [
     "audit_experience",
     "update_field",
     "Question",
+    # visualisation
+    "visualize_cv",
+    # export
+    "ttl_to_markdown",
 ]

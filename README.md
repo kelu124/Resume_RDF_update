@@ -222,6 +222,83 @@ Projects also carry `cvx:usesSkill` links to the `cv:Skill` nodes used on that e
 
 ---
 
+## Graph visualisation
+
+Render a Turtle CV as a visual knowledge graph.
+
+Requires `pyvis` (HTML) or `networkx` + `matplotlib` (PNG/SVG):
+`pip install "resume-rdf[viz]"`.
+
+### CLI
+
+```bash
+cv-graph my_cv.ttl                      # → my_cv.html  (interactive, default)
+cv-graph my_cv.ttl --output graph.png   # → static PNG
+cv-graph my_cv.ttl --output graph.svg   # → static SVG
+```
+
+### Python API
+
+```python
+from resume_rdf import visualize_cv
+
+out = visualize_cv("my_cv.ttl")               # → my_cv.html
+out = visualize_cv("my_cv.ttl", "graph.png")  # → graph.png
+print(f"Saved: {out}")
+```
+
+The graph shows: **Person → Employer → Project → Skill**, plus Education,
+Training/MOOCs, Personal Projects, and Publications radiating from the person
+node.  Hover over any node for the full tooltip (name, role, dates, description).
+
+Node colours:
+
+| Colour | Node type |
+|--------|-----------|
+| Blue star | Person |
+| Orange | Employer (cv:Company) |
+| Green diamond | Project (cvx:Project) |
+| Brown | Skill (from cvx:usesSkill links) |
+| Yellow | Education |
+| Grey | Training / Certification |
+| Teal | Online course (MOOC) |
+| Red diamond | Personal project |
+| Purple | Publication |
+
+---
+
+## TTL → Markdown export
+
+Convert a Turtle RDF CV back to clean, human-readable Markdown.
+
+Requires `rdflib`: `pip install "resume-rdf[export]"`.
+
+### CLI
+
+```bash
+cv-to-md my_cv.ttl                   # print to stdout
+cv-to-md my_cv.ttl --output cv.md    # write to file
+```
+
+### Python API
+
+```python
+from resume_rdf import ttl_to_markdown
+
+md = ttl_to_markdown("my_cv.ttl")
+print(md)
+
+from pathlib import Path
+Path("my_cv.md").write_text(ttl_to_markdown("my_cv.ttl"))
+```
+
+The output mirrors the structure of a hand-written consultant CV:
+person header, core skills, professional experience with nested projects
+(activities + outcomes + skills used), education, certifications & training,
+personal projects, and publications.  Sections with no content are omitted.
+
+---
+
 ## CV quality audit & field update
 
 After generating a graph you can audit it for gaps and fill them in
