@@ -15,7 +15,8 @@ Quick start::
     print(turtle)
 
 The library exposes two generation functions, utility helpers, the ontology
-constants used by the parser, and dataset access utilities.
+constants used by the parser, dataset access utilities, and a cross-TTL
+entity reconciler.
 """
 
 from resume_rdf.api import (
@@ -32,6 +33,14 @@ from resume_rdf.data import (
     load_records,
 )
 from resume_rdf.ontology import NAMESPACES, SYSTEM_PROMPT
+from resume_rdf.reconcile import (
+    Entity,
+    Match,
+    apply_mapping,
+    find_matches,
+    load_entities,
+    reconcile_interactive,
+)
 from resume_rdf.parsing import (
     count_triples,
     extract_person_name,
@@ -59,4 +68,11 @@ __all__ = [
     "load_records",
     "DATASET_REPO",
     "DATASET_URL",
+    # reconciliation
+    "reconcile_interactive",
+    "load_entities",
+    "find_matches",
+    "apply_mapping",
+    "Entity",
+    "Match",
 ]

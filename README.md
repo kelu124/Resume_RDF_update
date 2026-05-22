@@ -222,6 +222,93 @@ Projects also carry `cvx:usesSkill` links to the `cv:Skill` nodes used on that e
 
 ---
 
+## Entity reconciliation
+
+When you have TTL files from multiple CVs and want to query them together via
+SPARQL, project names and employer IRIs will often differ slightly across files
+(`"Smart Grid Analytics"` vs `"Smart-Grid Analytics"`).  The reconciler finds
+these near-duplicates and rewrites the TTL files to share a single canonical IRI.
+
+Requires `rdflib`: `pip install "resume-rdf[reconcile]"`.
+
+### CLI
+
+```bash
+cv-reconcile alice.ttl bob.ttl carol.ttl
+```
+
+Example session:
+
+```
+Loading 2 file(s)…
+  Extracted 14 entities (9 projects, 5 companies).
+
+Found 2 candidate pair(s) at ≥75% similarity:
+
+── [1/2]  PROJECT  (similarity 88%) ──
+  A: 'Smart Grid Analytics'              :proj_smartgrid_2022
+     (alice.ttl)
+  B: 'Smart-Grid Analytics'              :proj_smart_grid_analytics
+     (bob.ttl)
+  Canonical if merged → A  (:proj_smartgrid_2022)
+  Same entity? [y/n/q(uit)] y
+  ✓ Will rewrite  :proj_smart_grid_analytics  →  :proj_smartgrid_2022
+
+── [2/2]  COMPANY  (similarity 82%) ──
+  A: 'Acme Corp'                         :company_acme
+     (alice.ttl)
+  B: 'ACME Corporation'                  :company_acme_corp
+     (bob.ttl)
+  Canonical if merged → A  (:company_acme)
+  Same entity? [y/n/q(uit)] n
+
+Applying 1 merge(s) across 2 file(s)…
+  bob.ttl: 4 triple(s) rewritten
+Done.
+```
+
+Options:
+
+| Flag | Effect |
+|------|--------|
+| `--threshold 0.80` | Raise bar to reduce false positives (default: `0.75`) |
+| `--dry-run` / `-n` | Show matches without writing any files |
+| `--yes` / `-y`     | Accept all matches above threshold automatically |
+
+The IRI from the **first file listed** is kept as canonical.  Re-order the
+arguments to choose which IRI wins.
+
+### Python API
+
+```python
+from pathlib import Path
+from resume_rdf import reconcile_interactive, load_entities, find_matches
+
+# Inspect candidates programmatically
+entities = load_entities([Path("alice.ttl"), Path("bob.ttl")])
+matches  = find_matches(entities, threshold=0.80)
+for m in matches:
+    print(f"{m.score:.0%}  {m.a.label!r} ({m.a.source.name}) "
+          f"↔  {m.b.label!r} ({m.b.source.name})")
+
+# Interactive merge
+n = reconcile_interactive(
+    [Path("alice.ttl"), Path("bob.ttl")],
+    threshold=0.75,
+    dry_run=False,
+)
+print(f"{n} merge(s) applied")
+
+# Batch/automated mode (no prompts)
+n = reconcile_interactive(
+    [Path("alice.ttl"), Path("bob.ttl")],
+    threshold=0.90,   # high threshold → only near-identical matches
+    auto_yes=True,
+)
+```
+
+---
+
 ## Loading into a triplestore
 
 ```bash
