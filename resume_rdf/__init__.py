@@ -15,8 +15,8 @@ Quick start::
     print(turtle)
 
 The library exposes two generation functions, utility helpers, the ontology
-constants used by the parser, dataset access utilities, and a cross-TTL
-entity reconciler.
+constants used by the parser, dataset access utilities, a cross-TTL entity
+reconciler, and a CV quality-audit / field-update module.
 """
 
 from resume_rdf.api import (
@@ -45,6 +45,11 @@ from resume_rdf.parsing import (
     count_triples,
     extract_person_name,
     validate_turtle,
+)
+from resume_rdf.qa import (
+    Question,
+    audit_experience,
+    update_field,
 )
 
 __version__ = "0.1.0"
@@ -75,4 +80,8 @@ __all__ = [
     "apply_mapping",
     "Entity",
     "Match",
+    # CV quality audit
+    "audit_experience",
+    "update_field",
+    "Question",
 ]
