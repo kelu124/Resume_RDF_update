@@ -122,4 +122,4 @@ Key optional extra groups: `app`, `validate`, `reconcile`, `qa`, `viz`, `export`
 - `viz.py`: pyvis for `.html`, networkx + matplotlib for `.png`/`.svg`/`.pdf`; legend injected via HTML string patch (pyvis has no built-in legend API)
 - `qa.py`: `startDate`/`endDate` are ambiguous (exist in both `cv:` and `cvx:`); `update_field` checks for existing cvx: triple first to pick the right predicate
 - `export.py`: date strings formatted as "Month YYYY"; "present" for open-ended roles
-- `merge.py`: reuses `reconcile.py` for IRI unification (threshold 0.70, lower than cross-person 0.75); literal conflict heuristics: longest string for descriptions/titles, earliest for startDate, latest for endDate ("present" always wins as endDate)
+- `merge.py`: reuses `reconcile.py` for IRI unification (threshold 0.70). Three strategies for description-type predicates: `longest` (default), `concat` (join with " | "), `llm` (Claude synthesis, cached under `cache/merge_<sha256>.json`). Date predicates always use built-in heuristics. URI objects always union. `MergeStats` dataclass tracks llm_calls and llm_cache_hits too.

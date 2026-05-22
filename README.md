@@ -388,57 +388,90 @@ Requires `rdflib`: `pip install "resume-rdf[merge]"`.
 ### CLI
 
 ```bash
+# Keep the longest description (default)
 cv-merge sam_v1.ttl sam_v2.ttl --output sam_merged.ttl
+
+# Concatenate all unique descriptions with " | "
+cv-merge sam_v1.ttl sam_v2.ttl --output sam_merged.ttl --strategy concat
+
+# Ask Claude to synthesise one coherent description (cached)
+cv-merge sam_v1.ttl sam_v2.ttl --output sam_merged.ttl --strategy llm
 ```
 
 Example output:
 
 ```
 Merged 2 file(s)  (673 input triples)
+  Strategy             : llm
   IRI mappings applied : 7
   Conflicts resolved   : 12
+  LLM API calls        : 8
+  LLM cache hits       : 4
   Output triples       : 389
   Saved to             : sam_merged.ttl
 ```
 
 Options:
 
-| Flag | Effect |
-|------|--------|
-| `--threshold 0.65` | Similarity threshold for entity reconciliation (default: `0.70`) |
-| `--output FILE` | Output path (required) |
+| Flag | Default | Effect |
+|------|---------|--------|
+| `--strategy` | `longest` | `longest` \| `concat` \| `llm` — see below |
+| `--threshold` | `0.70` | Similarity threshold for entity reconciliation |
+| `--output FILE` | — | Output path (required) |
+| `--api-key KEY` | `$ANTHROPIC_API_KEY` | Required for `--strategy llm` |
+| `--model MODEL` | `claude-haiku-4-5-20251001` | Claude model for LLM synthesis |
 
 ### Python API
 
 ```python
 from resume_rdf import consolidate_ttls, MergeStats
 
-stats: MergeStats = consolidate_ttls(
-    ["sam_v1.ttl", "sam_v2.ttl"],
-    "sam_merged.ttl",
-    threshold=0.70,        # optional, default 0.70
+# Default: longest string wins
+stats = consolidate_ttls(["sam_v1.ttl", "sam_v2.ttl"], "sam_merged.ttl")
+
+# Concatenate (no information loss)
+stats = consolidate_ttls(
+    ["sam_v1.ttl", "sam_v2.ttl"], "sam_concat.ttl",
+    strategy="concat",
 )
+
+# LLM synthesis (uses cache — repeated calls are free)
+stats = consolidate_ttls(
+    ["sam_v1.ttl", "sam_v2.ttl"], "sam_llm.ttl",
+    strategy="llm",
+    api_key="sk-ant-...",          # or set ANTHROPIC_API_KEY
+)
+
 print(stats.input_triples)      # total triples across all input files
 print(stats.iri_mappings)       # entity IRIs unified by reconciliation
 print(stats.conflicts_resolved) # literal fields where values differed
 print(stats.output_triples)     # triples in merged file
+print(stats.llm_calls)          # Anthropic API calls made (llm strategy)
+print(stats.llm_cache_hits)     # calls served from cache (llm strategy)
 ```
 
-### Merge heuristics
-
-For each `(subject, predicate)` pair that has **different values across files**:
-
-| Predicate type | Strategy |
-|----------------|----------|
-| URI-valued (skills, type links) | **Union** — all values kept |
-| Description / title literals | **Longest string** wins |
-| `startDate` | **Earliest** date wins |
-| `endDate` | **Latest** date wins (`"present"` beats any date) |
-| Other string literals | **Longest string** wins |
+### Merge strategy details
 
 IRIs are first unified with the same fuzzy-matching logic as `cv-reconcile`
-(threshold 0.70 by default, which is lower than the cross-person default of 0.75
-to account for same-person CVs using more varied wording for the same entities).
+(threshold 0.70 by default).  Then, for each `(subject, predicate)` pair with
+conflicting values across files:
+
+| Predicate type | All strategies |
+|----------------|---------------|
+| URI-valued (skills, type links) | **Union** — all values always kept |
+| `startDate` | **Earliest** date always wins |
+| `endDate` | `"present"` beats any date; otherwise **latest** |
+| Other typed literals | **Longest** always wins |
+
+| Predicate type | `longest` | `concat` | `llm` |
+|----------------|-----------|----------|-------|
+| Description / title fields | longest string | join with `" \| "` | Claude synthesises one coherent text |
+
+The `llm` strategy only calls the API for **description-type predicates**
+(`projectDescription`, `jobDescription`, `benefitsDelivered`,
+`activitiesPerformed`, `roleTitle`, `projectName`, `jobTitle`).
+Results are cached under `cache/merge_<sha256>.json` alongside the CV
+parser cache — re-running the same merge is free.
 
 ---
 
