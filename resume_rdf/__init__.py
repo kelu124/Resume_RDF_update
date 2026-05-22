@@ -14,8 +14,8 @@ Quick start::
     )
     print(turtle)
 
-The library exposes two generation functions, utility helpers, and the ontology
-constants used by the parser.
+The library exposes two generation functions, utility helpers, the ontology
+constants used by the parser, and dataset access utilities.
 """
 
 from resume_rdf.api import (
@@ -23,6 +23,13 @@ from resume_rdf.api import (
     DEFAULT_MODEL,
     generate_graph_from_bytes,
     generate_graph_from_file,
+)
+from resume_rdf.data import (
+    DATASET_REPO,
+    DATASET_URL,
+    download_dataset,
+    iter_records,
+    load_records,
 )
 from resume_rdf.ontology import NAMESPACES, SYSTEM_PROMPT
 from resume_rdf.parsing import (
@@ -46,4 +53,10 @@ __all__ = [
     # defaults
     "DEFAULT_MODEL",
     "DEFAULT_MAX_TOKENS",
+    # dataset
+    "download_dataset",
+    "iter_records",
+    "load_records",
+    "DATASET_REPO",
+    "DATASET_URL",
 ]

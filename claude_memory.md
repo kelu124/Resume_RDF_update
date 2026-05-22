@@ -21,7 +21,8 @@ resume_rdf/
 ├── parsing.py      build_user_content_from_path/bytes, strip_fences,
 │                   count_triples, extract_person_name, validate_turtle
 ├── cache.py        file-based SHA-256 cache (cache/<hex>.json)
-└── api.py          generate_graph_from_file, generate_graph_from_bytes
+├── api.py          generate_graph_from_file, generate_graph_from_bytes
+└── data.py         download_dataset, iter_records, load_records
 
 app.py                      thin Streamlit wrapper (~90 lines)
 cv_to_knowledge_graph.py    thin CLI wrapper (~80 lines)

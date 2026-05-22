@@ -258,11 +258,45 @@ SELECT ?projName ?client WHERE {
 
 `data/master_resumes.jsonl` contains 1 866 real and synthetic résumés from
 [datasetmaster/resumes](https://huggingface.co/datasets/datasetmaster/resumes)
-(HuggingFace, MIT licence).  Re-download with:
+(HuggingFace, MIT licence).
+
+### Download
+
+```python
+from resume_rdf import download_dataset
+
+path = download_dataset()           # skips download if file already present
+path = download_dataset(force=True) # re-download unconditionally
+path = download_dataset("/tmp/data") # custom destination directory
+```
+
+Or from the command line:
 
 ```bash
 python download_data.py
 ```
+
+### Load records
+
+```python
+from resume_rdf import load_records, iter_records
+
+# Load all records into a list (1 866 dicts)
+records = load_records()
+print(len(records))            # 1866
+print(records[0].keys())
+# dict_keys(['personal_info', 'experience', 'education', 'skills',
+#            'projects', 'certifications', 'languages', 'metadata'])
+
+# Memory-efficient iteration (no full file load)
+for record in iter_records():
+    name   = record["personal_info"]["name"]
+    skills = [s.get("name") for s in record.get("skills", [])]
+    print(name, "→", skills)
+```
+
+Both functions accept a `dest_dir` argument and will auto-download the file
+on first use if it is missing (pass `auto_download=False` to suppress this).
 
 ---
 
