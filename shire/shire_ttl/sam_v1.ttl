@@ -1,0 +1,433 @@
+@prefix cv:      <http://purl.org/captsolo/resume-rdf/0.2/cv#> .
+@prefix cvb:     <http://purl.org/captsolo/resume-rdf/0.2/base#> .
+@prefix cvx:     <http://example.org/cv-extension#> .
+@prefix foaf:    <http://xmlns.com/foaf/0.1/> .
+@prefix xsd:     <http://www.w3.org/2001/XMLSchema#> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+@prefix bibo:    <http://purl.org/ontology/bibo/> .
+@prefix :        <http://example.org/cv/> .
+
+# ─────────────────────────────────────────
+# PERSON
+# ─────────────────────────────────────────
+
+:person a foaf:Person ;
+    foaf:name "Sam Gamgee" ;
+    foaf:mbox <mailto:sam.gamgee@shire-consulting.co.uk> ;
+    foaf:homepage <https://github.com/samgamgee> ;
+    foaf:account <https://linkedin.com/in/samgamgee> ;
+    foaf:phone "+44 7700 900 222" ;
+    cvx:locality "Leeds" ;
+    cvx:country "United Kingdom" .
+
+:cv a cv:CV ;
+    cv:aboutPerson :person ;
+    cv:cvTitle "Data Engineering & Analytics Consultant" ;
+    cv:lastUpdate "2025-07-11"^^xsd:date ;
+    cv:hasWorkHistory :wh_shire_2020, :wh_brandybuck_2017 ;
+    cv:hasSkill
+        :skill_python,
+        :skill_pyspark,
+        :skill_sql,
+        :skill_dbt,
+        :skill_airflow,
+        :skill_kafka,
+        :skill_spark,
+        :skill_aws,
+        :skill_azure,
+        :skill_terraform,
+        :skill_docker,
+        :skill_kubernetes,
+        :skill_rdf_sparql,
+        :skill_knowledge_graphs,
+        :skill_data_modelling,
+        :skill_power_bi,
+        :skill_etl,
+        :skill_scikit_learn,
+        :skill_flask,
+        :skill_postgresql,
+        :skill_iot,
+        :skill_gis,
+        :skill_sap_migration,
+        :skill_fhir,
+        :skill_esg_data ;
+    cv:hasEducation :edu_bsc_leeds_2017 ;
+    cvx:hasTraining
+        :training_aws_de_2023,
+        :training_google_de_2022,
+        :training_dbt_2023,
+        :training_databricks_spark ;
+    cvx:hasPersonalProject
+        :pp_rdflib_contrib,
+        :pp_agri_etl_kit .
+
+# ─────────────────────────────────────────
+# COMPANIES
+# ─────────────────────────────────────────
+
+:company_shire_consulting a cv:Company ;
+    cv:Name "Shire Consulting Group" ;
+    cv:URL <https://example.org> ;
+    cv:Industry "IT Consulting / Data Engineering" ;
+    cv:Locality "Leeds" ;
+    cv:Country "United Kingdom" .
+
+:company_brandybuck a cv:Company ;
+    cv:Name "Brandybuck Data Solutions" ;
+    cv:URL <https://example.org> ;
+    cv:Industry "IT Consulting / Data Engineering" ;
+    cv:Locality "Manchester" ;
+    cv:Country "United Kingdom" .
+
+:company_white_council a cv:Company ;
+    cv:Name "White Council Capital" ;
+    cv:Industry "Financial Services" ;
+    cv:Locality "London / Zurich" ;
+    cv:Country "United Kingdom / Switzerland" .
+
+:company_mordor_industrial a cv:Company ;
+    cv:Name "Mordor Industrial Group" ;
+    cv:Industry "Heavy Industry / Manufacturing" ;
+    cv:Locality "Manchester / Düsseldorf" ;
+    cv:Country "United Kingdom / Germany" .
+
+:company_northern_energy a cv:Company ;
+    cv:Name "Northern Energy Holdings" ;
+    cv:Industry "Energy & Utilities" ;
+    cv:Locality "Leeds" ;
+    cv:Country "United Kingdom" .
+
+:company_rohan_agri a cv:Company ;
+    cv:Name "Rohan Agricultural Cooperative" ;
+    cv:Industry "Agriculture" ;
+    cv:Locality "York" ;
+    cv:Country "United Kingdom" .
+
+:company_gondor_muni a cv:Company ;
+    cv:Name "Gondor Municipal Authority" ;
+    cv:Industry "Public Sector / Local Government" ;
+    cv:Locality "Leeds" ;
+    cv:Country "United Kingdom" .
+
+:company_rivendell_health a cv:Company ;
+    cv:Name "Rivendell Health Systems" ;
+    cv:Industry "Health Informatics / NHS" ;
+    cv:Locality "Leeds" ;
+    cv:Country "United Kingdom" .
+
+:company_uni_leeds a cv:Company ;
+    cv:Name "University of Leeds" ;
+    cv:Locality "Leeds" ;
+    cv:Country "United Kingdom" .
+
+# ─────────────────────────────────────────
+# WORK HISTORY
+# ─────────────────────────────────────────
+
+:wh_shire_2020 a cv:WorkHistory ;
+    cv:employedIn :company_shire_consulting ;
+    cv:jobTitle "Senior Data Consultant" ;
+    cv:startDate "2020-03-01"^^xsd:date ;
+    cv:jobDescription "Senior data consultant at Shire Consulting Group, leading data engineering and analytics engagements across energy, financial services, health informatics, and industrial manufacturing clients." ;
+    cvx:hasProject :proj_esg_white_council, :proj_mordor_supply_chain, :proj_northern_energy_smartgrid, :proj_rivendell_fhir .
+
+:wh_brandybuck_2017 a cv:WorkHistory ;
+    cv:employedIn :company_brandybuck ;
+    cv:jobTitle "Data Engineer" ;
+    cv:startDate "2017-06-01"^^xsd:date ;
+    cv:endDate "2020-02-28"^^xsd:date ;
+    cv:jobDescription "Data engineer at Brandybuck Data Solutions, delivering analytics and data platform projects for agricultural, public sector, and infrastructure clients." ;
+    cvx:hasProject :proj_rohan_farming, :proj_gondor_infra .
+
+# ─────────────────────────────────────────
+# PROJECTS
+# ─────────────────────────────────────────
+
+:proj_esg_white_council a cvx:Project ;
+    cvx:projectName "White Council Capital — ESG Reporting & Analytics Platform" ;
+    cvx:projectDescription "Delivery of a regulatory-grade ESG reporting and analytics platform for a financial services group, covering SFDR, GRI, and TCFD reporting requirements with a knowledge-graph-backed provenance layer." ;
+    cvx:clientName "White Council Capital" ;
+    cvx:roleTitle "Sustainability Data Analyst & Engineer" ;
+    cvx:startDate "2024-02-01"^^xsd:date ;
+    cvx:endDate "2024-11-30"^^xsd:date ;
+    cvx:activitiesPerformed "Designed the canonical ESG data model covering 500+ indicators aligned to SFDR, GRI, and TCFD schemas, including a Turtle RDF knowledge graph layer for provenance tracking. Built ingestion pipelines for nine data sources (Clarity AI, Bloomberg ESG, internal portfolio system) using Apache Airflow on AWS MWAA. Implemented automated data quality checks covering completeness, plausibility, and lineage. Built the SFDR PAI calculation engine in PySpark. Delivered self-service dashboards in Power BI." ;
+    cvx:benefitsDelivered "Error rate fell from ~12% to under 0.5% at first downstream consumption. SFDR PAI compute cost reduced by 60% vs. incumbent Excel-based process. 35 portfolio managers using self-service dashboards from day one of go-live." ;
+    cvx:domain "finance" ;
+    cvx:usesSkill :skill_python ;
+    cvx:usesSkill :skill_airflow ;
+    cvx:usesSkill :skill_pyspark ;
+    cvx:usesSkill :skill_aws ;
+    cvx:usesSkill :skill_rdf_sparql ;
+    cvx:usesSkill :skill_esg_data ;
+    cvx:usesSkill :skill_power_bi ;
+    cvx:usesSkill :skill_data_modelling .
+
+:proj_mordor_supply_chain a cvx:Project ;
+    cvx:projectName "Mordor Industrial Group — Supply Chain Resilience Programme" ;
+    cvx:projectDescription "Lead data engineering role on a supply chain and ERP transformation programme covering seven manufacturing sites in the UK and Germany, migrating 14 years of transactional history from SAP ECC to S/4HANA and implementing a real-time operational data platform." ;
+    cvx:clientName "Mordor Industrial Group" ;
+    cvx:roleTitle "Data & Systems Implementation Consultant" ;
+    cvx:startDate "2022-08-01"^^xsd:date ;
+    cvx:endDate "2023-12-31"^^xsd:date ;
+    cvx:activitiesPerformed "Designed the data migration strategy for ~800 GB of transactional history including cleansing rules for 2.3 million master data records. Built and maintained the ETL framework (Python + AWS Glue) for 22 migration runs. Implemented a real-time operational data platform (Kafka + Redshift) feeding MES and planning systems. Created the integration layer between S/4HANA and three third-party logistics providers via REST APIs. Owned the data cutover runbook, coordinating 17 technical workstreams across a 72-hour go-live window." ;
+    cvx:benefitsDelivered "All seven manufacturing sites went live on schedule. Zero data integrity issues raised during the 90-day hypercare period." ;
+    cvx:domain "industry" ;
+    cvx:usesSkill :skill_python ;
+    cvx:usesSkill :skill_aws ;
+    cvx:usesSkill :skill_kafka ;
+    cvx:usesSkill :skill_etl ;
+    cvx:usesSkill :skill_sap_migration ;
+    cvx:usesSkill :skill_sql .
+
+:proj_northern_energy_smartgrid a cvx:Project ;
+    cvx:projectName "Northern Energy Holdings — Smart Grid Modernisation Programme" ;
+    cvx:projectDescription "Senior data engineering role building a real-time meter data platform and an asset knowledge graph underpinning a grid digital twin for an energy and utilities client." ;
+    cvx:clientName "Northern Energy Holdings" ;
+    cvx:roleTitle "Data Engineering Lead" ;
+    cvx:startDate "2021-01-01"^^xsd:date ;
+    cvx:endDate "2022-06-30"^^xsd:date ;
+    cvx:activitiesPerformed "Architected and implemented a streaming ingestion pipeline handling 6 TB/day of AMI meter readings using Apache Kafka and AWS Kinesis. Designed the asset knowledge graph in RDF/Turtle modelling 420,000 grid assets for SPARQL-based fault propagation analysis. Built automated data quality and anomaly detection jobs in PySpark. Developed the demand-side response data pipeline connecting 12,000 enrolled customers to the SCADA/DMS dispatch system. Contributed to Ofgem reporting datasets with programme lead Frodo Baggins." ;
+    cvx:benefitsDelivered "Data platform processed peak load of 200,000 events/second without degradation. Supported a 14% improvement in SAIDI. Approximately 0.8% of erroneous meter readings caught before downstream processing." ;
+    cvx:domain "energy" ;
+    cvx:usesSkill :skill_kafka ;
+    cvx:usesSkill :skill_pyspark ;
+    cvx:usesSkill :skill_rdf_sparql ;
+    cvx:usesSkill :skill_knowledge_graphs ;
+    cvx:usesSkill :skill_aws ;
+    cvx:usesSkill :skill_data_modelling .
+
+:proj_rivendell_fhir a cvx:Project ;
+    cvx:projectName "Rivendell Health Systems — Clinical Data Pipeline Modernisation" ;
+    cvx:projectDescription "Ongoing engagement to redesign the data integration architecture for a regional NHS trust, scoping a migration from a custom HL7 v2 integration engine to a FHIR-native platform using Azure Health Data Services." ;
+    cvx:clientName "Rivendell Health Systems" ;
+    cvx:roleTitle "Lead Data Architect" ;
+    cvx:startDate "2025-02-01"^^xsd:date ;
+    cvx:activitiesPerformed "Completed a current-state assessment covering 38 system integrations and 120 daily message flows. Designed target-state FHIR R4 resource model and migration sequencing plan. Delivered proof-of-concept ingesting patient ADT feeds into FHIR at 99.97% fidelity." ;
+    cvx:benefitsDelivered "Proof-of-concept achieved 99.97% fidelity for patient ADT feed ingestion into FHIR. Clear migration sequencing plan produced for 38 integrations." ;
+    cvx:domain "healthcare" ;
+    cvx:usesSkill :skill_fhir ;
+    cvx:usesSkill :skill_azure ;
+    cvx:usesSkill :skill_data_modelling .
+
+:proj_rohan_farming a cvx:Project ;
+    cvx:projectName "Rohan Agricultural Cooperative — Precision Farming Analytics Platform" ;
+    cvx:projectDescription "Built a precision farming analytics platform integrating IoT sensor data, satellite imagery, and agronomic models for a 340-member agricultural cooperative." ;
+    cvx:clientName "Rohan Agricultural Cooperative" ;
+    cvx:roleTitle "Junior / Mid Data Engineer" ;
+    cvx:startDate "2017-06-01"^^xsd:date ;
+    cvx:endDate "2019-02-28"^^xsd:date ;
+    cvx:activitiesPerformed "Ingested data from 1,200 in-field sensors (soil moisture, temperature, yield monitors) via MQTT → PostgreSQL pipeline. Built a crop yield prediction model using scikit-learn gradient boosting. Created a farmer-facing reporting portal in Flask/Plotly." ;
+    cvx:benefitsDelivered "Crop yield prediction RMSE 8% below cooperative's existing advisory benchmarks. Participating farms reported average yield improvement of 6% over two seasons. 160 members using the reporting portal by end of season 2." ;
+    cvx:domain "other" ;
+    cvx:usesSkill :skill_python ;
+    cvx:usesSkill :skill_postgresql ;
+    cvx:usesSkill :skill_iot ;
+    cvx:usesSkill :skill_scikit_learn ;
+    cvx:usesSkill :skill_flask .
+
+:proj_gondor_infra a cvx:Project ;
+    cvx:projectName "Gondor Municipal Authority — Infrastructure Monitoring & Reporting Platform" ;
+    cvx:projectDescription "Designed and built an infrastructure monitoring and KPI reporting platform for a metropolitan local authority managing 4,200 assets including roads, bridges, drainage, and street lighting." ;
+    cvx:clientName "Gondor Municipal Authority" ;
+    cvx:roleTitle "Data Engineer" ;
+    cvx:startDate "2019-03-01"^^xsd:date ;
+    cvx:endDate "2020-02-28"^^xsd:date ;
+    cvx:activitiesPerformed "Consolidated asset condition data from eight legacy systems (CSV exports, REST APIs, GIS shapefiles) into a unified PostgreSQL data warehouse. Built a dbt transformation layer producing 40 standardised KPI views. Developed geospatial analytics identifying 14 high-risk asset clusters." ;
+    cvx:benefitsDelivered "Platform delivered in 11 weeks, 8 weeks ahead of original plan. Geospatial analysis directly informed a £3.2m capital investment decision. KPI views used by asset managers and the Cabinet Member for Transport." ;
+    cvx:domain "public-sector" ;
+    cvx:usesSkill :skill_python ;
+    cvx:usesSkill :skill_dbt ;
+    cvx:usesSkill :skill_postgresql ;
+    cvx:usesSkill :skill_gis .
+
+# ─────────────────────────────────────────
+# SKILLS
+# ─────────────────────────────────────────
+
+:skill_python a cv:Skill ;
+    cv:skillName "Python (pandas, PySpark, dbt, FastAPI)" ;
+    cv:skillLevel "Expert" ;
+    cv:skillYearsExperience "8"^^xsd:integer .
+
+:skill_pyspark a cv:Skill ;
+    cv:skillName "PySpark / Apache Spark" ;
+    cv:skillLevel "Advanced" ;
+    cv:skillYearsExperience "6"^^xsd:integer .
+
+:skill_sql a cv:Skill ;
+    cv:skillName "SQL (PostgreSQL, BigQuery, Snowflake)" ;
+    cv:skillLevel "Expert" ;
+    cv:skillYearsExperience "8"^^xsd:integer .
+
+:skill_dbt a cv:Skill ;
+    cv:skillName "dbt (data build tool)" ;
+    cv:skillLevel "Advanced" ;
+    cv:skillYearsExperience "5"^^xsd:integer .
+
+:skill_airflow a cv:Skill ;
+    cv:skillName "Apache Airflow" ;
+    cv:skillLevel "Advanced" ;
+    cv:skillYearsExperience "5"^^xsd:integer .
+
+:skill_kafka a cv:Skill ;
+    cv:skillName "Apache Kafka" ;
+    cv:skillLevel "Advanced" ;
+    cv:skillYearsExperience "5"^^xsd:integer .
+
+:skill_spark a cv:Skill ;
+    cv:skillName "Apache Spark" ;
+    cv:skillLevel "Advanced" ;
+    cv:skillYearsExperience "6"^^xsd:integer .
+
+:skill_aws a cv:Skill ;
+    cv:skillName "AWS (S3, Glue, Lambda, Redshift, MWAA, Kinesis)" ;
+    cv:skillLevel "Advanced" ;
+    cv:skillYearsExperience "6"^^xsd:integer .
+
+:skill_azure a cv:Skill ;
+    cv:skillName "Azure (ADF, Synapse, Health Data Services)" ;
+    cv:skillLevel "Intermediate" ;
+    cv:skillYearsExperience "3"^^xsd:integer .
+
+:skill_terraform a cv:Skill ;
+    cv:skillName "Terraform" ;
+    cv:skillLevel "Intermediate" ;
+    cv:skillYearsExperience "4"^^xsd:integer .
+
+:skill_docker a cv:Skill ;
+    cv:skillName "Docker" ;
+    cv:skillLevel "Advanced" ;
+    cv:skillYearsExperience "5"^^xsd:integer .
+
+:skill_kubernetes a cv:Skill ;
+    cv:skillName "Kubernetes" ;
+    cv:skillLevel "Intermediate" ;
+    cv:skillYearsExperience "3"^^xsd:integer .
+
+:skill_rdf_sparql a cv:Skill ;
+    cv:skillName "RDF/Turtle, SPARQL, rdflib" ;
+    cv:skillLevel "Advanced" ;
+    cv:skillYearsExperience "5"^^xsd:integer .
+
+:skill_knowledge_graphs a cv:Skill ;
+    cv:skillName "Knowledge Graphs" ;
+    cv:skillLevel "Advanced" ;
+    cv:skillYearsExperience "5"^^xsd:integer .
+
+:skill_data_modelling a cv:Skill ;
+    cv:skillName "Data Modelling & FAIR Data Principles" ;
+    cv:skillLevel "Advanced" ;
+    cv:skillYearsExperience "8"^^xsd:integer .
+
+:skill_power_bi a cv:Skill ;
+    cv:skillName "Power BI" ;
+    cv:skillLevel "Intermediate" ;
+    cv:skillYearsExperience "3"^^xsd:integer .
+
+:skill_etl a cv:Skill ;
+    cv:skillName "ETL / DataOps / Data Pipelines" ;
+    cv:skillLevel "Expert" ;
+    cv:skillYearsExperience "8"^^xsd:integer .
+
+:skill_scikit_learn a cv:Skill ;
+    cv:skillName "scikit-learn" ;
+    cv:skillLevel "Intermediate" ;
+    cv:skillYearsExperience "4"^^xsd:integer .
+
+:skill_flask a cv:Skill ;
+    cv:skillName "Flask / Plotly" ;
+    cv:skillLevel "Intermediate" ;
+    cv:skillYearsExperience "3"^^xsd:integer .
+
+:skill_postgresql a cv:Skill ;
+    cv:skillName "PostgreSQL" ;
+    cv:skillLevel "Advanced" ;
+    cv:skillYearsExperience "8"^^xsd:integer .
+
+:skill_iot a cv:Skill ;
+    cv:skillName "IoT / MQTT sensor integration" ;
+    cv:skillLevel "Intermediate" ;
+    cv:skillYearsExperience "4"^^xsd:integer .
+
+:skill_gis a cv:Skill ;
+    cv:skillName "GIS / Geospatial Analysis" ;
+    cv:skillLevel "Intermediate" ;
+    cv:skillYearsExperience "3"^^xsd:integer .
+
+:skill_sap_migration a cv:Skill ;
+    cv:skillName "SAP S/4HANA Migration & ERP Data Engineering" ;
+    cv:skillLevel "Advanced" ;
+    cv:skillYearsExperience "3"^^xsd:integer .
+
+:skill_fhir a cv:Skill ;
+    cv:skillName "FHIR R4 / HL7 / Health Data Architecture" ;
+    cv:skillLevel "Intermediate" ;
+    cv:skillYearsExperience "1"^^xsd:integer .
+
+:skill_esg_data a cv:Skill ;
+    cv:skillName "ESG Data Modelling (SFDR, GRI, TCFD)" ;
+    cv:skillLevel "Advanced" ;
+    cv:skillYearsExperience "2"^^xsd:integer .
+
+# ─────────────────────────────────────────
+# EDUCATION
+# ─────────────────────────────────────────
+
+:edu_bsc_leeds_2017 a cv:Education ;
+    cv:degreeType "BSc (First Class Honours)" ;
+    cv:eduMajor "Computer Science" ;
+    cv:eduStartDate "2014-09-01"^^xsd:date ;
+    cv:eduGradDate "2017-06-30"^^xsd:date ;
+    cv:studiedIn :company_uni_leeds ;
+    dcterms:description "Final year project: Distributed stream processing for agricultural IoT sensor networks." .
+
+# ─────────────────────────────────────────
+# CERTIFICATIONS / TRAININGS
+# ─────────────────────────────────────────
+
+:training_aws_de_2023 a cvx:Training ;
+    cvx:trainingTitle "AWS Certified Data Engineer – Associate" ;
+    cvx:trainingProvider "Amazon Web Services" ;
+    cvx:trainingDate "2023-01-01"^^xsd:date ;
+    cvx:certificationName "AWS Certified Data Engineer – Associate" ;
+    cvx:trainingTopics "Data engineering on AWS: S3, Glue, Redshift, Lambda, data lake architecture, ETL pipelines." .
+
+:training_google_de_2022 a cvx:Training ;
+    cvx:trainingTitle "Google Professional Data Engineer" ;
+    cvx:trainingProvider "Google Cloud" ;
+    cvx:trainingDate "2022-01-01"^^xsd:date ;
+    cvx:certificationName "Google Professional Data Engineer" ;
+    cvx:trainingTopics "Data engineering on Google Cloud Platform: BigQuery, Dataflow, Pub/Sub, data pipelines." .
+
+:training_dbt_2023 a cvx:Training ;
+    cvx:trainingTitle "dbt Analytics Engineering Certification" ;
+    cvx:trainingProvider "dbt Labs" ;
+    cvx:trainingDate "2023-01-01"^^xsd:date ;
+    cvx:certificationName "dbt Analytics Engineering Certification" ;
+    cvx:trainingTopics "Analytics engineering with dbt: modelling, testing, documentation, CI/CD for data transformations." .
+
+:training_databricks_spark a cvx:Training ;
+    cvx:trainingTitle "Databricks Certified Associate Developer for Apache Spark" ;
+    cvx:trainingProvider "Databricks" ;
+    cvx:certificationName "Databricks Certified Associate Developer for Apache Spark" ;
+    cvx:trainingTopics "Apache Spark development: RDDs, DataFrames, Spark SQL, streaming, MLlib on Databricks platform." .
+
+# ─────────────────────────────────────────
+# PERSONAL / OPEN-SOURCE PROJECTS
+# ─────────────────────────────────────────
+
+:pp_rdflib_contrib a cvx:PersonalProject ;
+    cvx:projectName "rdflib Contributor — Turtle Serialiser Fixes" ;
+    cvx:projectDescription "Minor bug fixes contributed to the rdflib open-source Python library, specifically targeting the Turtle serialiser." ;
+    cvx:projectURL <https://github.com/RDFLib/rdflib> ;
+    cvx:startDate "2023-01-01"^^xsd:date ;
+    cvx:endDate "2023-12-31"^^xsd:date ;
+    cvx:technologiesUsed "Python, RDF, Turtle, rdflib" ;
+    cvx:domain "technology" .
+
+:pp_agri_etl_kit a cvx:PersonalProject ;
+    cvx:projectName "agri-etl-kit" ;
+    cvx:projectDescription "Lightweight open-source ETL utilities library for agricultural IoT data, authored and maintained on GitHub. 220 stars." ;
+    cvx:projectURL <https://github.com/samgamgee/agri-etl-kit> ;
+    cvx:technologiesUsed "Python, MQTT, IoT, ETL, PostgreSQL" ;
+    cvx:domain "other" .

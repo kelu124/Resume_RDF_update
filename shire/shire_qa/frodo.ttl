@@ -1,0 +1,344 @@
+@prefix : <http://example.org/cv/> .
+@prefix bibo: <http://purl.org/ontology/bibo/> .
+@prefix cv: <http://purl.org/captsolo/resume-rdf/0.2/cv#> .
+@prefix cvx: <http://example.org/cv-extension#> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+@prefix foaf: <http://xmlns.com/foaf/0.1/> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+:company_grey_havens a cv:Company ;
+    cv:Country "United Kingdom" ;
+    cv:Industry "Logistics" ;
+    cv:Locality "Southampton" ;
+    cv:Name "Grey Havens Logistics" .
+
+:company_mordor_industrial a cv:Company ;
+    cv:Country "United Kingdom / Germany" ;
+    cv:Industry "Heavy Industry" ;
+    cv:Locality "Manchester / Düsseldorf" ;
+    cv:Name "Mordor Industrial Group" .
+
+:company_northern_energy a cv:Company ;
+    cv:Country "United Kingdom" ;
+    cv:Industry "Energy & Utilities" ;
+    cv:Locality "Leeds" ;
+    cv:Name "Northern Energy Holdings" .
+
+:company_shire_financial a cv:Company ;
+    cv:Country "United Kingdom" ;
+    cv:Industry "Financial Services" ;
+    cv:Locality "London" ;
+    cv:Name "Shire Financial Services" .
+
+:company_white_council a cv:Company ;
+    cv:Country "United Kingdom / Switzerland" ;
+    cv:Industry "Financial Services" ;
+    cv:Locality "London / Zurich" ;
+    cv:Name "White Council Capital" .
+
+:cv a cv:CV ;
+    cvx:hasPublication :pub_kg_esg_2024,
+        :pub_riio_ed2_2022 ;
+    cvx:hasTraining :training_aws_cp_2022,
+        :training_msp,
+        :training_prince2_2023,
+        :training_prosci_adkar ;
+    cv:aboutPerson :person ;
+    cv:cvTitle "Senior Management Consultant – Energy, Infrastructure & Digital Transformation" ;
+    cv:hasEducation :edu_ba_oxford_2013,
+        :edu_msc_imperial_2015 ;
+    cv:hasSkill :skill_benefits_realisation,
+        :skill_change_management,
+        :skill_data_architecture,
+        :skill_energy_systems,
+        :skill_erp_transformation,
+        :skill_esg_strategy,
+        :skill_jira_confluence,
+        :skill_power_bi,
+        :skill_programme_governance,
+        :skill_programme_management,
+        :skill_python,
+        :skill_rdf_knowledge_modelling,
+        :skill_regulatory_compliance,
+        :skill_smart_grid,
+        :skill_stakeholder_engagement ;
+    cv:hasWorkHistory :wh_pelennor_advisory_2018,
+        :wh_pelennor_infra_2025,
+        :wh_rivendell_2015,
+        :wh_shire_2020 ;
+    cv:lastUpdate "2025-01-01"^^xsd:date .
+
+:company_imperial a cv:Company ;
+    cv:Country "United Kingdom" ;
+    cv:Locality "London" ;
+    cv:Name "Imperial College London" .
+
+:company_oxford a cv:Company ;
+    cv:Country "United Kingdom" ;
+    cv:Locality "Oxford" ;
+    cv:Name "University of Oxford (Exeter College)" .
+
+:company_pelennor_advisory a cv:Company ;
+    cv:Country "United Kingdom" ;
+    cv:Locality "London" ;
+    cv:Name "Pelennor Advisory Services" .
+
+:company_pelennor_infra a cv:Company ;
+    cv:Country "United Kingdom" ;
+    cv:Locality "London" ;
+    cv:Name "Pelennor Infrastructure Partners" .
+
+:company_rivendell_partners a cv:Company ;
+    cv:Country "United Kingdom" ;
+    cv:Locality "London" ;
+    cv:Name "Rivendell Partners" .
+
+:company_shire_consulting a cv:Company ;
+    cv:Country "United Kingdom" ;
+    cv:Locality "London" ;
+    cv:Name "Shire Consulting Group" .
+
+:edu_ba_oxford_2013 a cv:Education ;
+    cv:degreeType "Bachelor of Arts (2:1)" ;
+    cv:eduGradDate "2013-01-01"^^xsd:date ;
+    cv:eduMajor "Philosophy, Politics & Economics" ;
+    cv:studiedIn :company_oxford .
+
+:edu_msc_imperial_2015 a cv:Education ;
+    cvx:thesisTitle "Resilience metrics for interdependent critical infrastructure networks" ;
+    cv:degreeType "Master of Science" ;
+    cv:eduGradDate "2015-01-01"^^xsd:date ;
+    cv:eduMajor "Systems Engineering & Management" ;
+    cv:studiedIn :company_imperial .
+
+:person a foaf:Person ;
+    foaf:account <https://github.com/frodobaggins> ;
+    foaf:based_near "London, United Kingdom" ;
+    foaf:homepage <https://linkedin.com/in/frodobaggins> ;
+    foaf:mbox <mailto:frodo.baggins@shire-consulting.co.uk> ;
+    foaf:name "Frodo Baggins" ;
+    foaf:phone "+44 7700 900 111" .
+
+:proj_grey_havens_ops_2019 a cvx:Project ;
+    cvx:activitiesPerformed "Assessed five in-flight initiatives, consolidated overlapping scope, and re-sequenced delivery against a revised £6 m budget. Recruited a permanent programme director and handed over with a fully baselined programme plan." ;
+    cvx:benefitsDelivered "Programme formally restarted within six weeks; initial delivery milestones met the following quarter." ;
+    cvx:clientName "Grey Havens Logistics" ;
+    cvx:domain "transportation" ;
+    cvx:endDate "2019-12-31"^^xsd:date ;
+    cvx:projectDescription "Short-term engagement to recover a stalled digital operations review at a UK port logistics operator." ;
+    cvx:projectName "Grey Havens Logistics — Digital Operations Review" ;
+    cvx:roleTitle "Interim Programme Director" ;
+    cvx:startDate "2019-09-01"^^xsd:date ;
+    cvx:usesSkill :skill_programme_governance,
+        :skill_programme_management,
+        :skill_stakeholder_engagement .
+
+:proj_mordor_supply_chain_2022 a cvx:Project ;
+    cvx:activitiesPerformed "Developed and executed an enterprise-wide change management strategy covering 2,400 affected employees. Designed role-impact assessments and competency frameworks for 14 job families transitioning from legacy SAP to S/4HANA. Ran 18 executive workshops to align board-level sponsors on programme scope and risk appetite. Coordinated with the data and systems implementation team on process dependencies and cutover sequencing. Managed a €1.2 m change and communications budget, delivering 8% under budget." ;
+    cvx:benefitsDelivered "Go-live achieved on schedule across all seven sites; user adoption score 84% at 90 days post-cutover (target: 75%)." ;
+    cvx:clientName "Mordor Industrial Group" ;
+    cvx:domain "industry" ;
+    cvx:endDate "2023-12-31"^^xsd:date ;
+    cvx:projectDescription "€40 m ERP and supply chain overhaul for a Tier-1 European industrial manufacturer following pandemic-era disruption, covering seven manufacturing sites in the UK and Germany." ;
+    cvx:projectName "Mordor Industrial Group — Supply Chain Resilience Programme" ;
+    cvx:roleTitle "Change Management Lead" ;
+    cvx:startDate "2022-08-01"^^xsd:date ;
+    cvx:usesSkill :skill_benefits_realisation,
+        :skill_change_management,
+        :skill_erp_transformation,
+        :skill_programme_governance,
+        :skill_stakeholder_engagement .
+
+:proj_northern_energy_grid_2021 a cvx:Project ;
+    cvx:activitiesPerformed "Defined and baselined a £28 m programme business case approved by the Ofgem price control framework. Architected a real-time grid telemetry platform ingesting 6 TB of meter data per day using an event-driven microservices pattern. Worked closely with the data engineering lead on data pipeline architecture and ontology design for the asset knowledge graph. Negotiated SLAs and integration contracts with three smart meter vendors. Presented programme progress quarterly to the Ofgem RIIO-ED2 liaison team." ;
+    cvx:benefitsDelivered "98% AMI deployment across target zones; 14% reduction in outage duration (SAIDI); demand flexibility contracts secured with 12,000 residential customers." ;
+    cvx:clientName "Northern Energy Holdings" ;
+    cvx:domain "energy" ;
+    cvx:endDate "2022-06-30"^^xsd:date ;
+    cvx:projectDescription "£28 m smart grid modernisation programme at a regional distribution network operator serving 1.2 million customers, covering AMI rollout, SCADA/DMS integration, demand-side response, and data platform." ;
+    cvx:projectName "Northern Energy Holdings — Smart Grid Modernisation Programme" ;
+    cvx:roleTitle "Programme Lead / Technical Architect" ;
+    cvx:startDate "2021-01-01"^^xsd:date ;
+    cvx:usesSkill :skill_data_architecture,
+        :skill_energy_systems,
+        :skill_programme_governance,
+        :skill_programme_management,
+        :skill_rdf_knowledge_modelling,
+        :skill_smart_grid .
+
+:proj_shire_financial_mifid_2018 a cvx:Project ;
+    cvx:activitiesPerformed "Led a team of four consultants and two internal business analysts through transaction reporting remediation. Mapped 340 reportable instruments to EMIR and MiFID II schemas; reduced reporting error rate from 9% to 0.3%. Introduced a regulatory change register that became the firm's standard governance tool." ;
+    cvx:benefitsDelivered "Zero regulatory findings in subsequent FCA thematic review." ;
+    cvx:clientName "Shire Financial Services" ;
+    cvx:domain "finance" ;
+    cvx:endDate "2019-08-31"^^xsd:date ;
+    cvx:projectDescription "MiFID II and EMIR regulatory change programme for a mid-tier UK asset manager, coordinating across front office, technology, legal, and operations functions." ;
+    cvx:projectName "Shire Financial Services — Regulatory Compliance Transformation" ;
+    cvx:roleTitle "Lead Consultant – Regulatory Change" ;
+    cvx:startDate "2018-03-01"^^xsd:date ;
+    cvx:usesSkill :skill_programme_governance,
+        :skill_regulatory_compliance,
+        :skill_stakeholder_engagement .
+
+:proj_wcc_esg_2024 a cvx:Project ;
+    cvx:activitiesPerformed "Managed a cross-functional team of 12 (data engineering, compliance, front office) across London and Zurich. Defined the target data model and vendor selection process (shortlisted Clarity AI and MSCI; recommended Clarity AI). Drove stakeholder alignment between portfolio management, risk, and legal functions, resolving a six-month impasse over data ownership. Delivered first production SFDR PAI report three weeks ahead of regulatory deadline." ;
+    cvx:benefitsDelivered "Reporting cycle reduced from 22 days to 4 days; audit trail coverage increased from 41% to 100%." ;
+    cvx:clientName "White Council Capital" ;
+    cvx:domain "finance" ;
+    cvx:endDate "2024-11-30"^^xsd:date ;
+    cvx:projectDescription "Group-wide ESG data platform for a mid-market asset manager managing €18 bn AUM, consolidating nine legacy data feeds into a single regulatory-grade reporting layer aligned to SFDR Article 8 and TCFD disclosure requirements." ;
+    cvx:projectName "White Council Capital — ESG Reporting & Analytics Platform" ;
+    cvx:roleTitle "Programme Manager" ;
+    cvx:startDate "2024-02-01"^^xsd:date ;
+    cvx:usesSkill :skill_data_architecture,
+        :skill_esg_strategy,
+        :skill_programme_governance,
+        :skill_programme_management,
+        :skill_stakeholder_engagement .
+
+:pub_kg_esg_2024 a bibo:Article ;
+    cvx:abstract "Presentation exploring the application of knowledge graph technologies to support regulatory-grade ESG disclosure, covering RDF modelling approaches, data provenance, and alignment to SFDR and TCFD requirements." ;
+    cvx:publicationVenue "Semantic Web in Finance Conference, London" ;
+    dcterms:date "2024-10-01"^^xsd:date ;
+    dcterms:title "Knowledge graphs for regulatory-grade ESG disclosure" .
+
+:pub_riio_ed2_2022 a bibo:Article ;
+    cvx:abstract "Conference presentation drawing on programme experience at a regional distribution network operator, examining governance challenges in delivering smart grid transformation within an Ofgem RIIO-ED2 price control framework." ;
+    cvx:publicationVenue "Energy Networks Association Annual Conference" ;
+    dcterms:date "2022-06-01"^^xsd:date ;
+    dcterms:title "Lessons from RIIO-ED2: governing smart grid transformation under price control" .
+
+:skill_jira_confluence a cv:Skill ;
+    cv:skillLevel "Proficient" ;
+    cv:skillName "Jira, Confluence, MS Project, Visio" ;
+    cv:skillYearsExperience 8 .
+
+:skill_power_bi a cv:Skill ;
+    cv:skillLevel "Proficient" ;
+    cv:skillName "Power BI" ;
+    cv:skillYearsExperience 5 .
+
+:skill_python a cv:Skill ;
+    cv:skillLevel "Intermediate" ;
+    cv:skillName "Python" ;
+    cv:skillYearsExperience 4 .
+
+:training_aws_cp_2022 a cvx:Training ;
+    cvx:certificationName "AWS Certified Cloud Practitioner" ;
+    cvx:trainingDate "2022-01-01"^^xsd:date ;
+    cvx:trainingProvider "Amazon Web Services" ;
+    cvx:trainingTitle "AWS Cloud Practitioner" ;
+    cvx:trainingTopics "Cloud computing fundamentals, AWS services, cloud architecture, security" .
+
+:training_msp a cvx:Training ;
+    cvx:certificationName "MSP Foundation & Practitioner" ;
+    cvx:trainingProvider "AXELOS / PeopleCert" ;
+    cvx:trainingTitle "Managing Successful Programmes (MSP) Foundation & Practitioner" ;
+    cvx:trainingTopics "Programme management, benefits realisation, governance, stakeholder engagement" .
+
+:training_prince2_2023 a cvx:Training ;
+    cvx:certificationName "PRINCE2 Practitioner (Renewed 2023)" ;
+    cvx:trainingDate "2023-01-01"^^xsd:date ;
+    cvx:trainingProvider "AXELOS / PeopleCert" ;
+    cvx:trainingTitle "PRINCE2 Practitioner" ;
+    cvx:trainingTopics "Project management methodology, governance, risk management" .
+
+:training_prosci_adkar a cvx:Training ;
+    cvx:certificationName "Prosci ADKAR Change Management Certification" ;
+    cvx:trainingProvider "Prosci" ;
+    cvx:trainingTitle "Prosci ADKAR Change Management Certification" ;
+    cvx:trainingTopics "Change management, ADKAR model, organisational change, adoption" .
+
+:wh_pelennor_advisory_2018 a cv:WorkHistory ;
+    cvx:hasProject :proj_grey_havens_ops_2019,
+        :proj_shire_financial_mifid_2018 ;
+    cv:employedIn :company_pelennor_advisory ;
+    cv:endDate "2019-12-31"^^xsd:date ;
+    cv:jobDescription "Consultant delivering regulatory compliance and digital operations engagements for financial services and logistics clients." ;
+    cv:jobTitle "Consultant" ;
+    cv:startDate "2018-03-01"^^xsd:date .
+
+:wh_pelennor_infra_2025 a cv:WorkHistory ;
+    cv:employedIn :company_pelennor_infra ;
+    cv:endDate "2023-06-30"^^xsd:date ;
+    cv:jobDescription "Strategic advisor on a long-term infrastructure asset management transformation for a UK toll road operator. Advising on data strategy and digital twin feasibility for a portfolio of 12 assets." ;
+    cv:jobTitle "Senior Advisor (Part-time)" ;
+    cv:startDate "2025-01-01"^^xsd:date .
+
+:wh_rivendell_2015 a cv:WorkHistory ;
+    cv:employedIn :company_rivendell_partners ;
+    cv:endDate "2018-02-28"^^xsd:date ;
+    cv:jobDescription "Supported strategy and operational improvement engagements across utilities and public sector clients. Led workstream delivery on a water sector asset management programme (Ofwat AMP7 business case support) and contributed to two operational efficiency reviews in central government." ;
+    cv:jobTitle "Graduate / Junior Consultant" ;
+    cv:startDate "2015-09-01"^^xsd:date .
+
+:wh_shire_2020 a cv:WorkHistory ;
+    cvx:hasProject :proj_mordor_supply_chain_2022,
+        :proj_northern_energy_grid_2021,
+        :proj_wcc_esg_2024 ;
+    cv:employedIn :company_shire_consulting ;
+    cv:endDate "2023-06-30"^^xsd:date ;
+    cv:jobDescription "Senior consultant delivering large-scale transformation programmes for energy, financial services, and industrial clients. Led cross-functional teams across multiple countries." ;
+    cv:jobTitle "Senior Consultant" ;
+    cv:startDate "2020-01-01"^^xsd:date .
+
+:skill_benefits_realisation a cv:Skill ;
+    cv:skillLevel "Expert" ;
+    cv:skillName "Benefits Realisation" ;
+    cv:skillYearsExperience 8 .
+
+:skill_change_management a cv:Skill ;
+    cv:skillLevel "Expert" ;
+    cv:skillName "Change Management" ;
+    cv:skillYearsExperience 10 .
+
+:skill_energy_systems a cv:Skill ;
+    cv:skillLevel "Expert" ;
+    cv:skillName "Energy Systems: Grid Modernisation, Demand-Side Response, Asset Management" ;
+    cv:skillYearsExperience 7 .
+
+:skill_erp_transformation a cv:Skill ;
+    cv:skillLevel "Proficient" ;
+    cv:skillName "ERP Transformation (SAP S/4HANA)" ;
+    cv:skillYearsExperience 3 .
+
+:skill_esg_strategy a cv:Skill ;
+    cv:skillLevel "Expert" ;
+    cv:skillName "ESG Strategy and Sustainability Reporting (GRI, TCFD, SFDR)" ;
+    cv:skillYearsExperience 5 .
+
+:skill_rdf_knowledge_modelling a cv:Skill ;
+    cv:skillLevel "Proficient" ;
+    cv:skillName "RDF Knowledge Modelling" ;
+    cv:skillYearsExperience 4 .
+
+:skill_regulatory_compliance a cv:Skill ;
+    cv:skillLevel "Proficient" ;
+    cv:skillName "Regulatory Compliance (MiFID II, EMIR, FCA)" ;
+    cv:skillYearsExperience 4 .
+
+:skill_smart_grid a cv:Skill ;
+    cv:skillLevel "Expert" ;
+    cv:skillName "Smart Grid, AMI, SCADA, Demand-Side Response" ;
+    cv:skillYearsExperience 5 .
+
+:skill_data_architecture a cv:Skill ;
+    cv:skillLevel "Proficient" ;
+    cv:skillName "Data Architecture" ;
+    cv:skillYearsExperience 6 .
+
+:skill_programme_management a cv:Skill ;
+    cv:skillLevel "Expert" ;
+    cv:skillName "Programme & Change Management (MSP, PRINCE2 Practitioner)" ;
+    cv:skillYearsExperience 10 .
+
+:skill_stakeholder_engagement a cv:Skill ;
+    cv:skillLevel "Expert" ;
+    cv:skillName "Stakeholder Engagement, Executive Advisory, Benefits Realisation" ;
+    cv:skillYearsExperience 10 .
+
+:skill_programme_governance a cv:Skill ;
+    cv:skillLevel "Expert" ;
+    cv:skillName "Programme Governance" ;
+    cv:skillYearsExperience 10 .
+

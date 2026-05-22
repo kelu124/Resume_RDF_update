@@ -1,0 +1,28 @@
+{
+  "frodo": [
+    {
+      "slug": "wh_shire_2020",
+      "field": "endDate",
+      "question": "When did you leave Shire Consulting Group, or is this your current role (YYYY-MM-DD or 'present')?"
+    },
+    {
+      "slug": "wh_pelennor_infra_2025",
+      "field": "endDate",
+      "question": "When did you leave Pelennor Infrastructure Partners, or is this your current role (YYYY-MM-DD or 'present')?"
+    }
+  ],
+  "sam_v1": [
+    {
+      "slug": "wh_shire_2020",
+      "field": "endDate",
+      "question": "When did you leave Shire Consulting Group, or is this your current role (YYYY-MM-DD or 'present')?"
+    }
+  ],
+  "sam_v2": [
+    {
+      "slug": "wh_rivendell_health_2025",
+      "field": "endDate",
+      "question": "When did you leave Rivendell Health Systems, or is this your current role (YYYY-MM-DD or 'present')?"
+    }
+  ]
+}
