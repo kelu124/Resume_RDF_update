@@ -378,6 +378,70 @@ update_field("my_cv.ttl", "proj_smartgrid_2022", "startDate", "2021-03-01")
 
 ---
 
+## TTL consolidation (same-person merge)
+
+When the same person has produced multiple CVs with different framings (chronological,
+ESG focus, technical focus …), you can merge them into one richer, deduplicated TTL.
+
+Requires `rdflib`: `pip install "resume-rdf[merge]"`.
+
+### CLI
+
+```bash
+cv-merge sam_v1.ttl sam_v2.ttl --output sam_merged.ttl
+```
+
+Example output:
+
+```
+Merged 2 file(s)  (673 input triples)
+  IRI mappings applied : 7
+  Conflicts resolved   : 12
+  Output triples       : 389
+  Saved to             : sam_merged.ttl
+```
+
+Options:
+
+| Flag | Effect |
+|------|--------|
+| `--threshold 0.65` | Similarity threshold for entity reconciliation (default: `0.70`) |
+| `--output FILE` | Output path (required) |
+
+### Python API
+
+```python
+from resume_rdf import consolidate_ttls, MergeStats
+
+stats: MergeStats = consolidate_ttls(
+    ["sam_v1.ttl", "sam_v2.ttl"],
+    "sam_merged.ttl",
+    threshold=0.70,        # optional, default 0.70
+)
+print(stats.input_triples)      # total triples across all input files
+print(stats.iri_mappings)       # entity IRIs unified by reconciliation
+print(stats.conflicts_resolved) # literal fields where values differed
+print(stats.output_triples)     # triples in merged file
+```
+
+### Merge heuristics
+
+For each `(subject, predicate)` pair that has **different values across files**:
+
+| Predicate type | Strategy |
+|----------------|----------|
+| URI-valued (skills, type links) | **Union** — all values kept |
+| Description / title literals | **Longest string** wins |
+| `startDate` | **Earliest** date wins |
+| `endDate` | **Latest** date wins (`"present"` beats any date) |
+| Other string literals | **Longest string** wins |
+
+IRIs are first unified with the same fuzzy-matching logic as `cv-reconcile`
+(threshold 0.70 by default, which is lower than the cross-person default of 0.75
+to account for same-person CVs using more varied wording for the same entities).
+
+---
+
 ## Entity reconciliation
 
 When you have TTL files from multiple CVs and want to query them together via

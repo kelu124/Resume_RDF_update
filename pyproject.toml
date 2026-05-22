@@ -18,10 +18,11 @@ app       = ["streamlit>=1.35.0"]
 validate  = ["rdflib>=6.0.0"]
 reconcile = ["rdflib>=6.0.0"]
 qa        = ["rdflib>=6.0.0"]
+merge     = ["rdflib>=6.0.0"]
 viz       = ["rdflib>=6.0.0", "pyvis>=0.3.2", "networkx>=3.0", "matplotlib>=3.5"]
 export    = ["rdflib>=6.0.0"]
 dataset   = ["datasets>=2.0.0", "huggingface_hub>=0.20.0"]
-all       = ["resume-rdf[app,validate,dataset,reconcile,qa,viz,export]"]
+all       = ["resume-rdf[app,validate,dataset,reconcile,qa,merge,viz,export]"]
 
 [project.scripts]
 cv-to-rdf    = "cv_to_knowledge_graph:main"
@@ -30,6 +31,7 @@ cv-audit     = "resume_rdf.qa:audit_main"
 cv-update    = "resume_rdf.qa:update_main"
 cv-graph     = "resume_rdf.viz:main"
 cv-to-md     = "resume_rdf.export:main"
+cv-merge     = "resume_rdf.merge:main"
 
 [project.urls]
 Repository = "https://github.com/kelu124/Resume_RDF_update"

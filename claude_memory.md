@@ -27,6 +27,9 @@ resume_rdf/
 │                   apply_mapping, reconcile_interactive (cross-TTL fuzzy match)
 ├── qa.py           Question dataclass, audit_experience, update_field
 │                   (audit WorkHistory/Project nodes for missing fields; patch TTL)
+├── merge.py        consolidate_ttls(ttl_files, output_file, threshold=0.70) → MergeStats
+│                   same-person TTL merge: IRI reconciliation + literal heuristics
+│                   (longest wins for descriptions; earliest/latest for dates; union for URIs)
 ├── viz.py          visualize_cv(ttl_file, output_path) → Path
 │                   HTML (pyvis Barnes-Hut) or PNG/SVG/PDF (networkx + matplotlib)
 └── export.py       ttl_to_markdown(ttl_file) → str
@@ -92,6 +95,7 @@ application_example.ipynb   Two-section notebook: entity reconciliation + CV aud
 | `cv-update` | `resume_rdf.qa:update_main` | `qa` |
 | `cv-graph` | `resume_rdf.viz:main` | `viz` |
 | `cv-to-md` | `resume_rdf.export:main` | `export` |
+| `cv-merge` | `resume_rdf.merge:main` | `merge` |
 
 `pip install "resume-rdf[all]"` installs all extras.
 Key optional extra groups: `app`, `validate`, `reconcile`, `qa`, `viz`, `export`, `dataset`.
@@ -109,6 +113,7 @@ Key optional extra groups: `app`, `validate`, `reconcile`, `qa`, `viz`, `export`
 | `feat/entity-reconciliation` | Added reconcile.py + cv-reconcile CLI |
 | `feat/cv-qa` | Added qa.py + cv-audit / cv-update CLIs |
 | `feat/cv-viz` | Added viz.py (visualize_cv) + export.py (ttl_to_markdown) + cv-graph / cv-to-md CLIs; shire/ test fixtures; application_example.ipynb |
+| `feat/ttl-merge` | Added merge.py (consolidate_ttls) + cv-merge CLI; Section 5 in shire2.ipynb |
 
 ## Key implementation notes
 
@@ -117,3 +122,4 @@ Key optional extra groups: `app`, `validate`, `reconcile`, `qa`, `viz`, `export`
 - `viz.py`: pyvis for `.html`, networkx + matplotlib for `.png`/`.svg`/`.pdf`; legend injected via HTML string patch (pyvis has no built-in legend API)
 - `qa.py`: `startDate`/`endDate` are ambiguous (exist in both `cv:` and `cvx:`); `update_field` checks for existing cvx: triple first to pick the right predicate
 - `export.py`: date strings formatted as "Month YYYY"; "present" for open-ended roles
+- `merge.py`: reuses `reconcile.py` for IRI unification (threshold 0.70, lower than cross-person 0.75); literal conflict heuristics: longest string for descriptions/titles, earliest for startDate, latest for endDate ("present" always wins as endDate)
