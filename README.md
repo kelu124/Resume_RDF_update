@@ -222,6 +222,85 @@ Projects also carry `cvx:usesSkill` links to the `cv:Skill` nodes used on that e
 
 ---
 
+## CV quality audit & field update
+
+After generating a graph you can audit it for gaps and fill them in
+programmatically.
+
+Requires `rdflib`: `pip install "resume-rdf[qa]"`.
+
+### `cv-audit` — find missing fields
+
+```bash
+cv-audit my_cv.ttl
+```
+
+Example output:
+
+```
+Found 3 question(s):
+
+  [wh_acme_2019]  endDate
+    When did you leave Acme Corp, or is this your current role (YYYY-MM-DD or 'present')?
+
+  [proj_smartgrid_2022]  benefitsDelivered
+    What outcomes or benefits did project 'Smart Grid Analytics' deliver?
+
+  [proj_smartgrid_2022]  usesSkill
+    Which skills were used on project 'Smart Grid Analytics'? (provide skill slugs or names)
+```
+
+Add `--json` for machine-readable output:
+
+```bash
+cv-audit my_cv.ttl --json
+# → [{"slug": "wh_acme_2019", "field": "endDate", "question": "..."}, ...]
+```
+
+Fields checked on **`cv:WorkHistory`** nodes: `employedIn`, `jobTitle`,
+`startDate`, `endDate`, `jobDescription`.
+
+Fields checked on **`cvx:Project`** nodes: `projectName`, `projectDescription`,
+`roleTitle`, `startDate`, `activitiesPerformed`, `benefitsDelivered`,
+`usesSkill` (at least one link).
+
+### `cv-update` — patch a single field
+
+```bash
+cv-update my_cv.ttl wh_acme_2019 jobTitle "Senior Engineer"
+cv-update my_cv.ttl wh_acme_2019 endDate 2023-06-30
+cv-update my_cv.ttl proj_smartgrid_2022 benefitsDelivered "Reduced grid losses by 12 %"
+```
+
+Accepts a **slug** (local IRI name, e.g. `wh_acme_2019`) or a **full IRI**.
+The file is updated in-place.
+
+Supported field names: `jobTitle`, `startDate`, `endDate`, `jobDescription`,
+`Name`, `projectName`, `projectDescription`, `clientName`, `roleTitle`,
+`activitiesPerformed`, `benefitsDelivered`, `domain`, `skillName`,
+`skillLevel`, `skillYearsExperience`, `degreeType`, `eduMajor`,
+`courseTitle`, `trainingTitle`, `title`, `date`, `doi`, `name`, and more.
+Run `cv-update --help` for the full list.
+
+### Python API
+
+```python
+from resume_rdf import audit_experience, update_field, Question
+
+# Audit
+questions: list[Question] = audit_experience("my_cv.ttl")
+for q in questions:
+    print(f"[{q.slug}]  {q.field}: {q.question}")
+
+# Update
+update_field("my_cv.ttl", "wh_acme_2019", "jobTitle", "Senior Engineer")
+update_field("my_cv.ttl", "proj_smartgrid_2022", "startDate", "2021-03-01")
+```
+
+`Question` is a frozen dataclass with three fields: `slug`, `field`, `question`.
+
+---
+
 ## Entity reconciliation
 
 When you have TTL files from multiple CVs and want to query them together via

@@ -17,12 +17,15 @@ dependencies = [
 app       = ["streamlit>=1.35.0"]
 validate  = ["rdflib>=6.0.0"]
 reconcile = ["rdflib>=6.0.0"]
+qa        = ["rdflib>=6.0.0"]
 dataset   = ["datasets>=2.0.0", "huggingface_hub>=0.20.0"]
-all       = ["resume-rdf[app,validate,dataset,reconcile]"]
+all       = ["resume-rdf[app,validate,dataset,reconcile,qa]"]
 
 [project.scripts]
 cv-to-rdf    = "cv_to_knowledge_graph:main"
 cv-reconcile = "resume_rdf.reconcile:main"
+cv-audit     = "resume_rdf.qa:audit_main"
+cv-update    = "resume_rdf.qa:update_main"
 
 [project.urls]
 Repository = "https://github.com/kelu124/Resume_RDF_update"
