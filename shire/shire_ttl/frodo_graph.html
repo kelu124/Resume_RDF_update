@@ -1,0 +1,163 @@
+<html>
+    <head>
+        <meta charset="utf-8">
+        
+            <script src="lib/bindings/utils.js"></script>
+            <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/vis-network/9.1.2/dist/dist/vis-network.min.css" integrity="sha512-WgxfT5LWjfszlPHXRmBWHkV2eceiWTOBvrKCNbdgDYTHrT2AeLCGbF4sZlZw3UMN3WtL0tGUoIAKsu8mllg/XA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+            <script src="https://cdnjs.cloudflare.com/ajax/libs/vis-network/9.1.2/dist/vis-network.min.js" integrity="sha512-LnvoEWDFrqGHlHmDD2101OrLcbsfkrzoSpvtSQtxK3RMnRV0eOkhhBN2dXHKRrUU8p2DGRTk35n4O8nWSVe1mQ==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+            
+        
+<center>
+<h1>CV — frodo</h1>
+</center>
+
+<!-- <link rel="stylesheet" href="../node_modules/vis/dist/vis.min.css" type="text/css" />
+<script type="text/javascript" src="../node_modules/vis/dist/vis.js"> </script>-->
+        <link
+          href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta3/dist/css/bootstrap.min.css"
+          rel="stylesheet"
+          integrity="sha384-eOJMYsd53ii+scO/bJGFsiCZc+5NDVN2yr8+0RDqr0Ql0h+rP48ckxlpbzKgwra6"
+          crossorigin="anonymous"
+        />
+        <script
+          src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta3/dist/js/bootstrap.bundle.min.js"
+          integrity="sha384-JEW9xMcG8R+pH31jmWH6WWP0WintQrMb4s7ZOdauHnUtxwoG2vI5DkLtS3qm9Ekf"
+          crossorigin="anonymous"
+        ></script>
+
+
+        <center>
+          <h1>CV — frodo</h1>
+        </center>
+        <style type="text/css">
+
+             #mynetwork {
+                 width: 100%;
+                 height: 820px;
+                 background-color: #f5f5f5;
+                 border: 1px solid lightgray;
+                 position: relative;
+                 float: left;
+             }
+
+             
+
+             
+
+             
+        </style>
+    </head>
+
+
+    <body>
+        <div class="card" style="width: 100%">
+            
+            
+            <div id="mynetwork" class="card-body"></div>
+        </div>
+
+        
+        
+
+        <script type="text/javascript">
+
+              // initialize global variables.
+              var edges;
+              var nodes;
+              var allNodes;
+              var allEdges;
+              var nodeColors;
+              var originalNodes;
+              var network;
+              var container;
+              var options, data;
+              var filter = {
+                  item : '',
+                  property : '',
+                  value : []
+              };
+
+              
+
+              
+
+              // This method is responsible for drawing the graph, returns the drawn network
+              function drawGraph() {
+                  var container = document.getElementById('mynetwork');
+
+                  
+
+                  // parsing and collecting nodes and edges from the python
+                  nodes = new vis.DataSet([{"color": "#4e79a7", "font": {"color": "#2d2d2d"}, "id": "http://example.org/cv/person", "label": "Frodo Baggins", "shape": "star", "size": 35, "title": "Frodo Baggins\u003cbr\u003eSenior Management Consultant \u2013 Energy, Infrastructure \u0026 Digital Transformation\u003cbr\u003eLondon, United Kingdom\u003cbr\u003efrodo.baggins@shire-consulting.co.uk\u003cbr\u003ehttps://linkedin.com/in/frodobaggins"}, {"color": "#f28e2b", "font": {"color": "#2d2d2d"}, "id": "http://example.org/cv/company_shire_consulting", "label": "Shire Consulting Group", "shape": "square", "size": 22, "title": "Shire Consulting Group\u003cbr\u003eLondon\u003cbr\u003e2020\u2013"}, {"color": "#59a14f", "font": {"color": "#2d2d2d"}, "id": "http://example.org/cv/proj_wcc_esg_2024", "label": "White Council Capital \u2014 ESG\u2026", "shape": "diamond", "size": 18, "title": "White Council Capital \u2014 ESG Reporting \u0026 Analytics Platform\u003cbr\u003eRole: Programme Manager\u003cbr\u003eClient: White Council Capital\u003cbr\u003e2024\u20132024\u003cbr\u003eGroup-wide ESG data platform for a mid-market asset manager managing \u20ac18 bn AUM, consolidating nine legacy data feeds in\u2026"}, {"color": "#9c755f", "font": {"color": "#2d2d2d"}, "id": "http://example.org/cv/skill_esg_strategy", "label": "ESG Strategy and Sustainabi\u2026", "shape": "dot", "size": 11, "title": "ESG Strategy and Sustainability Reporting (GRI, TCFD, SFDR)\u003cbr\u003eExpert, 5 yr"}, {"color": "#9c755f", "font": {"color": "#2d2d2d"}, "id": "http://example.org/cv/skill_programme_management", "label": "Programme \u0026 Change Manageme\u2026", "shape": "dot", "size": 11, "title": "Programme \u0026 Change Management (MSP, PRINCE2 Practitioner)\u003cbr\u003eExpert, 10 yr"}, {"color": "#9c755f", "font": {"color": "#2d2d2d"}, "id": "http://example.org/cv/skill_data_architecture", "label": "Data Architecture", "shape": "dot", "size": 11, "title": "Data Architecture\u003cbr\u003eProficient, 6 yr"}, {"color": "#9c755f", "font": {"color": "#2d2d2d"}, "id": "http://example.org/cv/skill_stakeholder_engagement", "label": "Stakeholder Engagement, Exe\u2026", "shape": "dot", "size": 11, "title": "Stakeholder Engagement, Executive Advisory, Benefits Realisation\u003cbr\u003eExpert, 10 yr"}, {"color": "#9c755f", "font": {"color": "#2d2d2d"}, "id": "http://example.org/cv/skill_programme_governance", "label": "Programme Governance", "shape": "dot", "size": 11, "title": "Programme Governance\u003cbr\u003eExpert, 10 yr"}, {"color": "#59a14f", "font": {"color": "#2d2d2d"}, "id": "http://example.org/cv/proj_mordor_supply_chain_2022", "label": "Mordor Industrial Group \u2014 S\u2026", "shape": "diamond", "size": 18, "title": "Mordor Industrial Group \u2014 Supply Chain Resilience Programme\u003cbr\u003eRole: Change Management Lead\u003cbr\u003eClient: Mordor Industrial Group\u003cbr\u003e2022\u20132023\u003cbr\u003e\u20ac40 m ERP and supply chain overhaul for a Tier-1 European industrial manufacturer following pandemic-era disruption, cov\u2026"}, {"color": "#9c755f", "font": {"color": "#2d2d2d"}, "id": "http://example.org/cv/skill_change_management", "label": "Change Management", "shape": "dot", "size": 11, "title": "Change Management\u003cbr\u003eExpert, 10 yr"}, {"color": "#9c755f", "font": {"color": "#2d2d2d"}, "id": "http://example.org/cv/skill_erp_transformation", "label": "ERP Transformation (SAP S/4\u2026", "shape": "dot", "size": 11, "title": "ERP Transformation (SAP S/4HANA)\u003cbr\u003eProficient, 3 yr"}, {"color": "#9c755f", "font": {"color": "#2d2d2d"}, "id": "http://example.org/cv/skill_benefits_realisation", "label": "Benefits Realisation", "shape": "dot", "size": 11, "title": "Benefits Realisation\u003cbr\u003eExpert, 8 yr"}, {"color": "#59a14f", "font": {"color": "#2d2d2d"}, "id": "http://example.org/cv/proj_northern_energy_grid_2021", "label": "Northern Energy Holdings \u2014 \u2026", "shape": "diamond", "size": 18, "title": "Northern Energy Holdings \u2014 Smart Grid Modernisation Programme\u003cbr\u003eRole: Programme Lead / Technical Architect\u003cbr\u003eClient: Northern Energy Holdings\u003cbr\u003e2021\u20132022\u003cbr\u003e\u00a328 m smart grid modernisation programme at a regional distribution network operator serving 1.2 million customers, cove\u2026"}, {"color": "#9c755f", "font": {"color": "#2d2d2d"}, "id": "http://example.org/cv/skill_smart_grid", "label": "Smart Grid, AMI, SCADA, Dem\u2026", "shape": "dot", "size": 11, "title": "Smart Grid, AMI, SCADA, Demand-Side Response\u003cbr\u003eExpert, 5 yr"}, {"color": "#9c755f", "font": {"color": "#2d2d2d"}, "id": "http://example.org/cv/skill_energy_systems", "label": "Energy Systems: Grid Modern\u2026", "shape": "dot", "size": 11, "title": "Energy Systems: Grid Modernisation, Demand-Side Response, Asset Management\u003cbr\u003eExpert, 7 yr"}, {"color": "#9c755f", "font": {"color": "#2d2d2d"}, "id": "http://example.org/cv/skill_rdf_knowledge_modelling", "label": "RDF Knowledge Modelling", "shape": "dot", "size": 11, "title": "RDF Knowledge Modelling\u003cbr\u003eProficient, 4 yr"}, {"color": "#f28e2b", "font": {"color": "#2d2d2d"}, "id": "http://example.org/cv/company_pelennor_advisory", "label": "Pelennor Advisory Services", "shape": "square", "size": 22, "title": "Pelennor Advisory Services\u003cbr\u003eLondon\u003cbr\u003e2018\u20132019"}, {"color": "#59a14f", "font": {"color": "#2d2d2d"}, "id": "http://example.org/cv/proj_shire_financial_mifid_2018", "label": "Shire Financial Services \u2014 \u2026", "shape": "diamond", "size": 18, "title": "Shire Financial Services \u2014 Regulatory Compliance Transformation\u003cbr\u003eRole: Lead Consultant \u2013 Regulatory Change\u003cbr\u003eClient: Shire Financial Services\u003cbr\u003e2018\u20132019\u003cbr\u003eMiFID II and EMIR regulatory change programme for a mid-tier UK asset manager, coordinating across front office, technol\u2026"}, {"color": "#9c755f", "font": {"color": "#2d2d2d"}, "id": "http://example.org/cv/skill_regulatory_compliance", "label": "Regulatory Compliance (MiFI\u2026", "shape": "dot", "size": 11, "title": "Regulatory Compliance (MiFID II, EMIR, FCA)\u003cbr\u003eProficient, 4 yr"}, {"color": "#59a14f", "font": {"color": "#2d2d2d"}, "id": "http://example.org/cv/proj_grey_havens_ops_2019", "label": "Grey Havens Logistics \u2014 Dig\u2026", "shape": "diamond", "size": 18, "title": "Grey Havens Logistics \u2014 Digital Operations Review\u003cbr\u003eRole: Interim Programme Director\u003cbr\u003eClient: Grey Havens Logistics\u003cbr\u003e2019\u20132019\u003cbr\u003eShort-term engagement to recover a stalled digital operations review at a UK port logistics operator."}, {"color": "#f28e2b", "font": {"color": "#2d2d2d"}, "id": "http://example.org/cv/company_rivendell_partners", "label": "Rivendell Partners", "shape": "square", "size": 22, "title": "Rivendell Partners\u003cbr\u003eLondon\u003cbr\u003e2015\u20132018"}, {"color": "#f28e2b", "font": {"color": "#2d2d2d"}, "id": "http://example.org/cv/company_pelennor_infra", "label": "Pelennor Infrastructure Par\u2026", "shape": "square", "size": 22, "title": "Pelennor Infrastructure Partners\u003cbr\u003eLondon\u003cbr\u003e2025\u2013"}, {"color": "#edc948", "font": {"color": "#2d2d2d"}, "id": "http://example.org/cv/edu_msc_imperial_2015", "label": "Master of Science \u2013 Systems\u2026", "shape": "square", "size": 16, "title": "Master of Science \u2013 Systems Engineering \u0026 Management\u003cbr\u003eImperial College London\u003cbr\u003e\u20132015"}, {"color": "#edc948", "font": {"color": "#2d2d2d"}, "id": "http://example.org/cv/edu_ba_oxford_2013", "label": "Bachelor of Arts (2:1) \u2013 Ph\u2026", "shape": "square", "size": 16, "title": "Bachelor of Arts (2:1) \u2013 Philosophy, Politics \u0026 Economics\u003cbr\u003eUniversity of Oxford (Exeter College)\u003cbr\u003e\u20132013"}, {"color": "#bab0ac", "font": {"color": "#2d2d2d"}, "id": "http://example.org/cv/training_prince2_2023", "label": "PRINCE2 Practitioner", "shape": "dot", "size": 12, "title": "PRINCE2 Practitioner\u003cbr\u003eAXELOS / PeopleCert"}, {"color": "#bab0ac", "font": {"color": "#2d2d2d"}, "id": "http://example.org/cv/training_msp", "label": "Managing Successful Program\u2026", "shape": "dot", "size": 12, "title": "Managing Successful Programmes (MSP) Foundation \u0026 Practitioner\u003cbr\u003eAXELOS / PeopleCert"}, {"color": "#bab0ac", "font": {"color": "#2d2d2d"}, "id": "http://example.org/cv/training_prosci_adkar", "label": "Prosci ADKAR Change Managem\u2026", "shape": "dot", "size": 12, "title": "Prosci ADKAR Change Management Certification\u003cbr\u003eProsci"}, {"color": "#bab0ac", "font": {"color": "#2d2d2d"}, "id": "http://example.org/cv/training_aws_cp_2022", "label": "AWS Cloud Practitioner", "shape": "dot", "size": 12, "title": "AWS Cloud Practitioner\u003cbr\u003eAmazon Web Services"}, {"color": "#b07aa1", "font": {"color": "#2d2d2d"}, "id": "http://example.org/cv/pub_kg_esg_2024", "label": "Knowledge graphs for regula\u2026", "shape": "dot", "size": 12, "title": "Knowledge graphs for regulatory-grade ESG disclosure\u003cbr\u003eSemantic Web in Finance Conference, London"}, {"color": "#b07aa1", "font": {"color": "#2d2d2d"}, "id": "http://example.org/cv/pub_riio_ed2_2022", "label": "Lessons from RIIO-ED2: gove\u2026", "shape": "dot", "size": 12, "title": "Lessons from RIIO-ED2: governing smart grid transformation under price control\u003cbr\u003eEnergy Networks Association Annual Conference"}]);
+                  edges = new vis.DataSet([{"arrows": {"to": {"enabled": true, "scaleFactor": 0.6}}, "font": {"align": "middle", "size": 8}, "from": "http://example.org/cv/person", "label": "Senior Consultant", "smooth": {"type": "dynamic"}, "title": "Senior Consultant", "to": "http://example.org/cv/company_shire_consulting"}, {"arrows": {"to": {"enabled": true, "scaleFactor": 0.6}}, "font": {"align": "middle", "size": 8}, "from": "http://example.org/cv/company_shire_consulting", "label": "Programme Manager", "smooth": {"type": "dynamic"}, "title": "Programme Manager", "to": "http://example.org/cv/proj_wcc_esg_2024"}, {"arrows": {"to": {"enabled": true, "scaleFactor": 0.6}}, "font": {"align": "middle", "size": 8}, "from": "http://example.org/cv/proj_wcc_esg_2024", "label": "uses", "smooth": {"type": "dynamic"}, "title": "uses", "to": "http://example.org/cv/skill_esg_strategy"}, {"arrows": {"to": {"enabled": true, "scaleFactor": 0.6}}, "font": {"align": "middle", "size": 8}, "from": "http://example.org/cv/proj_wcc_esg_2024", "label": "uses", "smooth": {"type": "dynamic"}, "title": "uses", "to": "http://example.org/cv/skill_programme_management"}, {"arrows": {"to": {"enabled": true, "scaleFactor": 0.6}}, "font": {"align": "middle", "size": 8}, "from": "http://example.org/cv/proj_wcc_esg_2024", "label": "uses", "smooth": {"type": "dynamic"}, "title": "uses", "to": "http://example.org/cv/skill_data_architecture"}, {"arrows": {"to": {"enabled": true, "scaleFactor": 0.6}}, "font": {"align": "middle", "size": 8}, "from": "http://example.org/cv/proj_wcc_esg_2024", "label": "uses", "smooth": {"type": "dynamic"}, "title": "uses", "to": "http://example.org/cv/skill_stakeholder_engagement"}, {"arrows": {"to": {"enabled": true, "scaleFactor": 0.6}}, "font": {"align": "middle", "size": 8}, "from": "http://example.org/cv/proj_wcc_esg_2024", "label": "uses", "smooth": {"type": "dynamic"}, "title": "uses", "to": "http://example.org/cv/skill_programme_governance"}, {"arrows": {"to": {"enabled": true, "scaleFactor": 0.6}}, "font": {"align": "middle", "size": 8}, "from": "http://example.org/cv/company_shire_consulting", "label": "Change Management Lead", "smooth": {"type": "dynamic"}, "title": "Change Management Lead", "to": "http://example.org/cv/proj_mordor_supply_chain_2022"}, {"arrows": {"to": {"enabled": true, "scaleFactor": 0.6}}, "font": {"align": "middle", "size": 8}, "from": "http://example.org/cv/proj_mordor_supply_chain_2022", "label": "uses", "smooth": {"type": "dynamic"}, "title": "uses", "to": "http://example.org/cv/skill_change_management"}, {"arrows": {"to": {"enabled": true, "scaleFactor": 0.6}}, "font": {"align": "middle", "size": 8}, "from": "http://example.org/cv/proj_mordor_supply_chain_2022", "label": "uses", "smooth": {"type": "dynamic"}, "title": "uses", "to": "http://example.org/cv/skill_erp_transformation"}, {"arrows": {"to": {"enabled": true, "scaleFactor": 0.6}}, "font": {"align": "middle", "size": 8}, "from": "http://example.org/cv/proj_mordor_supply_chain_2022", "label": "uses", "smooth": {"type": "dynamic"}, "title": "uses", "to": "http://example.org/cv/skill_stakeholder_engagement"}, {"arrows": {"to": {"enabled": true, "scaleFactor": 0.6}}, "font": {"align": "middle", "size": 8}, "from": "http://example.org/cv/proj_mordor_supply_chain_2022", "label": "uses", "smooth": {"type": "dynamic"}, "title": "uses", "to": "http://example.org/cv/skill_benefits_realisation"}, {"arrows": {"to": {"enabled": true, "scaleFactor": 0.6}}, "font": {"align": "middle", "size": 8}, "from": "http://example.org/cv/proj_mordor_supply_chain_2022", "label": "uses", "smooth": {"type": "dynamic"}, "title": "uses", "to": "http://example.org/cv/skill_programme_governance"}, {"arrows": {"to": {"enabled": true, "scaleFactor": 0.6}}, "font": {"align": "middle", "size": 8}, "from": "http://example.org/cv/company_shire_consulting", "label": "Programme Lead / Technical Architect", "smooth": {"type": "dynamic"}, "title": "Programme Lead / Technical Architect", "to": "http://example.org/cv/proj_northern_energy_grid_2021"}, {"arrows": {"to": {"enabled": true, "scaleFactor": 0.6}}, "font": {"align": "middle", "size": 8}, "from": "http://example.org/cv/proj_northern_energy_grid_2021", "label": "uses", "smooth": {"type": "dynamic"}, "title": "uses", "to": "http://example.org/cv/skill_smart_grid"}, {"arrows": {"to": {"enabled": true, "scaleFactor": 0.6}}, "font": {"align": "middle", "size": 8}, "from": "http://example.org/cv/proj_northern_energy_grid_2021", "label": "uses", "smooth": {"type": "dynamic"}, "title": "uses", "to": "http://example.org/cv/skill_energy_systems"}, {"arrows": {"to": {"enabled": true, "scaleFactor": 0.6}}, "font": {"align": "middle", "size": 8}, "from": "http://example.org/cv/proj_northern_energy_grid_2021", "label": "uses", "smooth": {"type": "dynamic"}, "title": "uses", "to": "http://example.org/cv/skill_data_architecture"}, {"arrows": {"to": {"enabled": true, "scaleFactor": 0.6}}, "font": {"align": "middle", "size": 8}, "from": "http://example.org/cv/proj_northern_energy_grid_2021", "label": "uses", "smooth": {"type": "dynamic"}, "title": "uses", "to": "http://example.org/cv/skill_rdf_knowledge_modelling"}, {"arrows": {"to": {"enabled": true, "scaleFactor": 0.6}}, "font": {"align": "middle", "size": 8}, "from": "http://example.org/cv/proj_northern_energy_grid_2021", "label": "uses", "smooth": {"type": "dynamic"}, "title": "uses", "to": "http://example.org/cv/skill_programme_management"}, {"arrows": {"to": {"enabled": true, "scaleFactor": 0.6}}, "font": {"align": "middle", "size": 8}, "from": "http://example.org/cv/proj_northern_energy_grid_2021", "label": "uses", "smooth": {"type": "dynamic"}, "title": "uses", "to": "http://example.org/cv/skill_programme_governance"}, {"arrows": {"to": {"enabled": true, "scaleFactor": 0.6}}, "font": {"align": "middle", "size": 8}, "from": "http://example.org/cv/person", "label": "Consultant", "smooth": {"type": "dynamic"}, "title": "Consultant", "to": "http://example.org/cv/company_pelennor_advisory"}, {"arrows": {"to": {"enabled": true, "scaleFactor": 0.6}}, "font": {"align": "middle", "size": 8}, "from": "http://example.org/cv/company_pelennor_advisory", "label": "Lead Consultant \u2013 Regulatory Change", "smooth": {"type": "dynamic"}, "title": "Lead Consultant \u2013 Regulatory Change", "to": "http://example.org/cv/proj_shire_financial_mifid_2018"}, {"arrows": {"to": {"enabled": true, "scaleFactor": 0.6}}, "font": {"align": "middle", "size": 8}, "from": "http://example.org/cv/proj_shire_financial_mifid_2018", "label": "uses", "smooth": {"type": "dynamic"}, "title": "uses", "to": "http://example.org/cv/skill_regulatory_compliance"}, {"arrows": {"to": {"enabled": true, "scaleFactor": 0.6}}, "font": {"align": "middle", "size": 8}, "from": "http://example.org/cv/proj_shire_financial_mifid_2018", "label": "uses", "smooth": {"type": "dynamic"}, "title": "uses", "to": "http://example.org/cv/skill_programme_governance"}, {"arrows": {"to": {"enabled": true, "scaleFactor": 0.6}}, "font": {"align": "middle", "size": 8}, "from": "http://example.org/cv/proj_shire_financial_mifid_2018", "label": "uses", "smooth": {"type": "dynamic"}, "title": "uses", "to": "http://example.org/cv/skill_stakeholder_engagement"}, {"arrows": {"to": {"enabled": true, "scaleFactor": 0.6}}, "font": {"align": "middle", "size": 8}, "from": "http://example.org/cv/company_pelennor_advisory", "label": "Interim Programme Director", "smooth": {"type": "dynamic"}, "title": "Interim Programme Director", "to": "http://example.org/cv/proj_grey_havens_ops_2019"}, {"arrows": {"to": {"enabled": true, "scaleFactor": 0.6}}, "font": {"align": "middle", "size": 8}, "from": "http://example.org/cv/proj_grey_havens_ops_2019", "label": "uses", "smooth": {"type": "dynamic"}, "title": "uses", "to": "http://example.org/cv/skill_programme_management"}, {"arrows": {"to": {"enabled": true, "scaleFactor": 0.6}}, "font": {"align": "middle", "size": 8}, "from": "http://example.org/cv/proj_grey_havens_ops_2019", "label": "uses", "smooth": {"type": "dynamic"}, "title": "uses", "to": "http://example.org/cv/skill_stakeholder_engagement"}, {"arrows": {"to": {"enabled": true, "scaleFactor": 0.6}}, "font": {"align": "middle", "size": 8}, "from": "http://example.org/cv/proj_grey_havens_ops_2019", "label": "uses", "smooth": {"type": "dynamic"}, "title": "uses", "to": "http://example.org/cv/skill_programme_governance"}, {"arrows": {"to": {"enabled": true, "scaleFactor": 0.6}}, "font": {"align": "middle", "size": 8}, "from": "http://example.org/cv/person", "label": "Graduate / Junior Consultant", "smooth": {"type": "dynamic"}, "title": "Graduate / Junior Consultant", "to": "http://example.org/cv/company_rivendell_partners"}, {"arrows": {"to": {"enabled": true, "scaleFactor": 0.6}}, "font": {"align": "middle", "size": 8}, "from": "http://example.org/cv/person", "label": "Senior Advisor (Part-time)", "smooth": {"type": "dynamic"}, "title": "Senior Advisor (Part-time)", "to": "http://example.org/cv/company_pelennor_infra"}, {"arrows": {"to": {"enabled": true, "scaleFactor": 0.6}}, "font": {"align": "middle", "size": 8}, "from": "http://example.org/cv/person", "label": "studied", "smooth": {"type": "dynamic"}, "title": "studied", "to": "http://example.org/cv/edu_msc_imperial_2015"}, {"arrows": {"to": {"enabled": true, "scaleFactor": 0.6}}, "font": {"align": "middle", "size": 8}, "from": "http://example.org/cv/person", "label": "studied", "smooth": {"type": "dynamic"}, "title": "studied", "to": "http://example.org/cv/edu_ba_oxford_2013"}, {"arrows": {"to": {"enabled": true, "scaleFactor": 0.6}}, "font": {"align": "middle", "size": 8}, "from": "http://example.org/cv/person", "label": "certified", "smooth": {"type": "dynamic"}, "title": "certified", "to": "http://example.org/cv/training_prince2_2023"}, {"arrows": {"to": {"enabled": true, "scaleFactor": 0.6}}, "font": {"align": "middle", "size": 8}, "from": "http://example.org/cv/person", "label": "certified", "smooth": {"type": "dynamic"}, "title": "certified", "to": "http://example.org/cv/training_msp"}, {"arrows": {"to": {"enabled": true, "scaleFactor": 0.6}}, "font": {"align": "middle", "size": 8}, "from": "http://example.org/cv/person", "label": "certified", "smooth": {"type": "dynamic"}, "title": "certified", "to": "http://example.org/cv/training_prosci_adkar"}, {"arrows": {"to": {"enabled": true, "scaleFactor": 0.6}}, "font": {"align": "middle", "size": 8}, "from": "http://example.org/cv/person", "label": "certified", "smooth": {"type": "dynamic"}, "title": "certified", "to": "http://example.org/cv/training_aws_cp_2022"}, {"arrows": {"to": {"enabled": true, "scaleFactor": 0.6}}, "font": {"align": "middle", "size": 8}, "from": "http://example.org/cv/person", "label": "published", "smooth": {"type": "dynamic"}, "title": "published", "to": "http://example.org/cv/pub_kg_esg_2024"}, {"arrows": {"to": {"enabled": true, "scaleFactor": 0.6}}, "font": {"align": "middle", "size": 8}, "from": "http://example.org/cv/person", "label": "published", "smooth": {"type": "dynamic"}, "title": "published", "to": "http://example.org/cv/pub_riio_ed2_2022"}]);
+
+                  nodeColors = {};
+                  allNodes = nodes.get({ returnType: "Object" });
+                  for (nodeId in allNodes) {
+                    nodeColors[nodeId] = allNodes[nodeId].color;
+                  }
+                  allEdges = edges.get({ returnType: "Object" });
+                  // adding nodes and edges to the graph
+                  data = {nodes: nodes, edges: edges};
+
+                  var options = {
+    "configure": {
+        "enabled": false
+    },
+    "edges": {
+        "color": {
+            "inherit": true
+        },
+        "smooth": {
+            "enabled": true,
+            "type": "dynamic"
+        }
+    },
+    "interaction": {
+        "dragNodes": true,
+        "hideEdgesOnDrag": false,
+        "hideNodesOnDrag": false
+    },
+    "physics": {
+        "barnesHut": {
+            "avoidOverlap": 0,
+            "centralGravity": 0.12,
+            "damping": 0.09,
+            "gravitationalConstant": -7000,
+            "springConstant": 0.05,
+            "springLength": 160
+        },
+        "enabled": true,
+        "stabilization": {
+            "enabled": true,
+            "fit": true,
+            "iterations": 1000,
+            "onlyDynamicEdges": false,
+            "updateInterval": 50
+        }
+    }
+};
+
+                  
+
+
+                  
+
+                  network = new vis.Network(container, data, options);
+
+                  
+
+                  
+
+                  
+
+
+                  
+
+                  return network;
+
+              }
+              drawGraph();
+        </script>
+    </body>
+</html>
