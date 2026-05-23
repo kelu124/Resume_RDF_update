@@ -1,12 +1,19 @@
 # Core library (always required)
 anthropic>=0.28.0
 
+# Turtle RDF parsing and serialisation  (validate, reconcile, qa, merge, export, viz)
+rdflib>=6.0.0
+
+# Graph visualisation — interactive HTML  (pip install "resume-rdf[viz]")
+pyvis>=0.3.2
+
+# Graph visualisation — static PNG/SVG/PDF  (pip install "resume-rdf[viz]")
+networkx>=3.0
+matplotlib>=3.5
+
 # Streamlit web application  (pip install "resume-rdf[app]")
 streamlit>=1.35.0
 
-# Turtle RDF validation       (pip install "resume-rdf[validate]")
-rdflib>=6.0.0
-
-# Dataset download            (pip install "resume-rdf[dataset]")
+# Resume dataset  (pip install "resume-rdf[dataset]")
 datasets>=2.0.0
 huggingface_hub>=0.20.0

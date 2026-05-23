@@ -14,10 +14,19 @@ Quick start::
     )
     print(turtle)
 
-The library exposes two generation functions, utility helpers, the ontology
-constants used by the parser, dataset access utilities, a cross-TTL entity
-reconciler, a CV quality-audit / field-update module, a same-person TTL
-consolidator, a graph visualiser, and a TTL → Markdown exporter.
+Modules
+-------
+api         generate_graph_from_file / generate_graph_from_bytes
+cache       file-based SHA-256 response cache (used by api and merge)
+cli         cv-to-rdf command-line entry-point
+data        dataset download, load_records, iter_records
+export      ttl_to_markdown  (cv-to-md CLI)
+merge       consolidate_ttls — same-person TTL merger  (cv-merge CLI)
+ontology    SYSTEM_PROMPT + NAMESPACES constants
+parsing     count_triples, extract_person_name, validate_turtle
+qa          audit_experience, update_field  (cv-audit / cv-update CLIs)
+reconcile   load_entities, find_matches, reconcile_interactive  (cv-reconcile CLI)
+viz         visualize_cv  (cv-graph CLI)
 """
 
 from resume_rdf.api import (

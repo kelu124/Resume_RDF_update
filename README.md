@@ -40,16 +40,22 @@ The graph captures not just employment history and skills, but also **project-le
 
 ```
 resume_rdf/                 ← importable Python library
-├── __init__.py             public API
-├── ontology.py             SYSTEM_PROMPT + namespace constants
-├── parsing.py              content builders, Turtle helpers
+├── __init__.py             public API — re-exports all key symbols
+├── api.py                  generate_graph_from_file / _from_bytes
 ├── cache.py                file-based SHA-256 response cache
-└── api.py                  generate_graph_from_file / _from_bytes
+├── cli.py                  cv-to-rdf entry-point
+├── data.py                 dataset download + iteration helpers
+├── export.py               ttl_to_markdown  /  cv-to-md CLI
+├── merge.py                consolidate_ttls  /  cv-merge CLI
+├── ontology.py             SYSTEM_PROMPT + namespace constants
+├── parsing.py              Turtle helpers (count_triples, extract_person_name …)
+├── qa.py                   audit_experience, update_field  /  cv-audit, cv-update CLIs
+├── reconcile.py            entity reconciliation  /  cv-reconcile CLI
+└── viz.py                  visualize_cv  /  cv-graph CLI
 
 app.py                      Streamlit web app (thin wrapper)
-cv_to_knowledge_graph.py    CLI script / cv-to-rdf entry-point (thin wrapper)
+application_example.py      standalone end-to-end demo script
 pyproject.toml              pip-installable package definition
-download_data.py            dataset download helper
 data/                       master_resumes.jsonl (1 866 records, MIT)
 ```
 
@@ -129,22 +135,28 @@ a specific input, or set `LLM_CACHE_DIR` to override the cache directory.
 
 ---
 
-## CLI
+## CLI reference
 
-After `pip install .` a `cv-to-rdf` command is available:
+After `pip install .` seven CLI commands are available:
+
+| Command | Extra needed | What it does |
+|---------|-------------|--------------|
+| `cv-to-rdf` | _(core)_ | Parse a CV file into Turtle RDF |
+| `cv-audit` | `[qa]` | Report missing / empty fields in a TTL |
+| `cv-update` | `[qa]` | Patch a single field value in a TTL |
+| `cv-reconcile` | `[reconcile]` | Unify near-duplicate IRIs across multiple TTLs |
+| `cv-merge` | `[merge]` | Merge same-person TTLs into one enriched file |
+| `cv-graph` | `[viz]` | Render a TTL as an interactive HTML graph |
+| `cv-to-md` | `[export]` | Convert a TTL back to readable Markdown |
+
+### `cv-to-rdf` — parse a CV
 
 ```bash
-# Basic — writes <cv_stem>.ttl next to the input
-cv-to-rdf my_cv.pdf
-
-# Or run the script directly
-python cv_to_knowledge_graph.py my_cv.pdf \
-  --output graph.ttl \
-  --context "Energy and transport sectors, output in English." \
-  --model claude-opus-4-6 \
-  --max-tokens 60000 \
-  --validate \
-  --quiet
+cv-to-rdf my_cv.pdf                              # → my_cv.ttl
+cv-to-rdf my_cv.pdf --output graph.ttl
+cv-to-rdf my_cv.pdf --context "Energy sector, output in English."
+cv-to-rdf my_cv.pdf --model claude-opus-4-7 --max-tokens 80000
+cv-to-rdf my_cv.pdf --validate --quiet
 ```
 
 The API key can be passed via environment variable (recommended) or flag:
