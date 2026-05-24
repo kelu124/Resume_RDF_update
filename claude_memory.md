@@ -63,17 +63,19 @@ Runs the full pipeline using the `shire/` CVs, outputs to `shire/output/`:
 
 Run: `python application_example.py` (requires `ANTHROPIC_API_KEY`)
 
-## app.py — Streamlit web app flow
+## app.py — Streamlit web app flow (4-step pipeline)
 
-1. Password gate (`st.secrets["app"]["password"]`)
-2. File upload (PDF, `.txt`, `.md`)
-3. Optional context note (language, industry)
-4. `generate_graph_from_file` → Turtle RDF
-5. Download `.ttl`
+Rewrote 2026-05-24. State machine driven by `st.session_state["step"]` (1–4).
 
-Currently only exposes CV parsing. Does **not** yet offer reconcile/audit/merge/viz in the UI.
+| Step | Key session state | What happens |
+|------|-------------------|-------------|
+| 1 · Upload | `ttl_files: list[(name, path_str)]` | Upload .pdf/.txt/.md/.ttl/.docx; TTLs used as-is, others parsed via Claude; ZIP download of all TTLs |
+| 2 · Consolidate | `working_path`, `merge_stats` | `consolidate_ttls()` with strategy selector; shows metrics + download; skipped if only 1 TTL |
+| 3 · QA Chat | `chat_history`, `pending_questions`, `current_q` | `audit_experience()` → questions in chat; answers applied via `update_field()`; type 'done' to skip |
+| 4 · Export | `exports: {ttl_bytes, md, html_bytes, zip_bytes}` | `ttl_to_markdown()` + `visualize_cv()` → ZIP package; preview both outputs inline |
 
-**Planned: full app.py rewrite** (scheduled Sunday 2026-05-24 07:00 Paris) — extend the Streamlit UI to cover the full pipeline (parse → reconcile → audit → update → merge → visualize → export) as a multi-step wizard or tabbed interface.
+Helper functions: `_tmpdir()`, `_go(step)`, `_reset()`, `_make_zip()`, `_docx_to_bytes()`.
+All file I/O goes through a per-session `tempfile.mkdtemp()` directory.
 
 ## CLI commands
 

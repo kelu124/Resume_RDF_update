@@ -175,12 +175,14 @@ cv-to-rdf my_cv.pdf --api-key sk-ant-...
 streamlit run app.py
 ```
 
-Opens at `http://localhost:8501`. After signing in:
+Opens at `http://localhost:8501`. Four-step pipeline:
 
-1. Upload your CV (PDF, `.txt`, or `.md`)
-2. Optionally add a context note (language preference, main sectors, etc.)
-3. Click **Generate knowledge graph**
-4. Download the `.ttl` file
+| Step | What happens |
+|------|-------------|
+| **1 · Upload** | Upload `.pdf`, `.txt`, `.md`, `.ttl`, or `.docx` files (multiple). TTL files are used as-is; others are parsed via Claude. Download a ZIP of all parsed TTLs. |
+| **2 · Consolidate** | *(only if >1 TTL)* Merge same-person CVs into one enriched graph. Choose strategy: `longest` / `concat` / `llm`. Shows merge stats and lets you download the merged TTL. |
+| **3 · QA Chat** | Audit the TTL for missing fields. Questions are asked one at a time in a chat interface; answers are applied in-place via `update_field`. Type `done` or click **Proceed to export** to skip remaining questions. |
+| **4 · Export** | Generate Markdown CV, interactive HTML graph, and a ZIP package (TTL + Markdown + HTML). Preview both outputs in the browser. |
 
 ### Configuration
 
