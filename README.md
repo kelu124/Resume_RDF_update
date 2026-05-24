@@ -36,6 +36,34 @@ The graph captures not just employment history and skills, but also **project-le
 
 ---
 
+## Who is this for?
+
+### For the lay person
+
+Think of this tool as a smart reading assistant for CVs. You give it a CV — any format — and it reads through the whole document and extracts every meaningful piece of information: where the person worked, what they did there, which projects they led, what skills they used, and what results they delivered. It then stores all of that in a structured format that a computer can search, compare, and reason over.
+
+The practical result: instead of a PDF that only a human can read, you get a living, queryable profile. You can ask questions like "who has worked on renewable energy projects?" or "which of our people have led teams of more than ten?" and get instant, accurate answers — across dozens or hundreds of CVs at once. The tool also flags gaps ("this role has no end date"), lets you fill them in through a simple chat interface, and can export a clean, formatted CV back out when you need it.
+
+No coding required to use the web app. No data leaves your environment unless you choose to share it.
+
+### For resource managers in consulting firms
+
+Consulting firms live and die by the quality and speed of their staffing decisions. This tool was built with that pressure in mind.
+
+**The problem it solves:** consultant CVs are usually Word documents or PDFs — unstructured, inconsistently formatted, and impossible to query at scale. Finding the right person for a bid means emailing around, relying on memory, or maintaining a spreadsheet that's always out of date.
+
+**What it gives you instead:**
+
+- **A structured, searchable profile for every consultant** — skills, clients, sectors, project roles, certifications, and outcomes, all extracted automatically from existing CVs.
+- **Cross-portfolio search** — instantly identify who has relevant experience for a specific client, sector, or technology, without reading a single document.
+- **Automatic gap detection** — the tool flags missing information (no project description, no end date, no stated outcomes) and lets you fill those gaps through a conversational interface.
+- **CV consolidation** — when a consultant has multiple CV versions for different audiences, the tool merges them into one complete profile without losing any information.
+- **Consistent exports** — generate clean, standardised Markdown CVs from any profile, ready to tailor for a bid or framework submission.
+
+The result is a skills database that builds itself from documents you already have, stays up to date as consultants update their CVs, and gives your BD and staffing teams a genuine search capability across the whole bench.
+
+---
+
 ## Project structure
 
 ```
