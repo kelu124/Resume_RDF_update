@@ -75,9 +75,28 @@ if [[ -z "$OUTPUT" ]]; then
     OUTPUT="$FOLDER/master_cv.ttl"
 fi
 
+# ── load API key from .env if not already in environment ──────────────────────
+if [[ -z "${ANTHROPIC_API_KEY:-}" ]]; then
+    SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    for _env_candidate in ".env" "$SCRIPT_DIR/.env"; do
+        if [[ -f "$_env_candidate" ]]; then
+            _val=$(grep -E '^ANTHROPIC_API_KEY=' "$_env_candidate" | head -1 | cut -d'=' -f2-)
+            # Strip optional surrounding quotes
+            _val="${_val#[\"\']}"
+            _val="${_val%[\"\']}"
+            if [[ -n "$_val" ]]; then
+                ANTHROPIC_API_KEY="$_val"
+                echo "Loaded ANTHROPIC_API_KEY from $_env_candidate"
+                break
+            fi
+        fi
+    done
+fi
+
 if [[ -z "${ANTHROPIC_API_KEY:-}" ]]; then
     echo "Error: ANTHROPIC_API_KEY is not set." >&2
-    echo "Export it before running:  export ANTHROPIC_API_KEY='sk-ant-...'" >&2
+    echo "  Option 1 — export in your shell:  export ANTHROPIC_API_KEY='sk-ant-...'" >&2
+    echo "  Option 2 — add to a .env file:    echo 'ANTHROPIC_API_KEY=sk-ant-...' >> .env" >&2
     exit 1
 fi
 
