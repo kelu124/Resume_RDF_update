@@ -111,20 +111,14 @@ fi
 echo "Found ${#CV_FILES[@]} CV file(s) in '$FOLDER'"
 echo ""
 
-# ── temp directory (cleaned up on exit) ───────────────────────────────────────
-TMPDIR=$(mktemp -d)
-trap 'rm -rf "$TMPDIR"' EXIT
-
-# ── parse each CV to TTL ──────────────────────────────────────────────────────
+# ── parse each CV to TTL (output alongside source file) ──────────────────────
+# e.g. folder/cv1.docx → folder/cv1.docx.ttl
 TTL_FILES=()
 FAILED=0
 
 for cv_file in "${CV_FILES[@]}"; do
     filename=$(basename "$cv_file")
-    stem="${filename%.*}"
-    # Append index to avoid collisions when two files share a stem
-    idx=${#TTL_FILES[@]}
-    out_ttl="$TMPDIR/${idx}_${stem}.ttl"
+    out_ttl="${cv_file}.ttl"
 
     echo "→ Parsing: $filename"
 
@@ -136,6 +130,7 @@ for cv_file in "${CV_FILES[@]}"; do
     if "$CV_TO_RDF" "${parse_args[@]}"; then
         if [[ -f "$out_ttl" && -s "$out_ttl" ]]; then
             TTL_FILES+=("$out_ttl")
+            echo "  ✓ Saved: $(basename "$out_ttl")"
         else
             echo "  ✗ Output file is empty — skipping." >&2
             (( FAILED++ )) || true
