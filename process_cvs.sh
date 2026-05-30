@@ -9,7 +9,7 @@
 # Options:
 #   -o, --output FILE     Output TTL file  (default: <folder>/master_cv.ttl)
 #   -c, --context TEXT    Extra context hint for the parser
-#   -s, --strategy STR    Merge strategy: longest|concat|llm  (default: longest)
+#   -s, --strategy STR    Merge strategy: longest|concat|llm  (default: llm)
 #   -h, --help            Show this help
 #
 # Environment:
@@ -29,7 +29,7 @@ set -uo pipefail
 # ── defaults ──────────────────────────────────────────────────────────────────
 OUTPUT=""   # resolved to <folder>/master_cv.ttl after arg parsing
 CONTEXT=""
-STRATEGY="longest"
+STRATEGY="llm"
 FOLDER=""
 
 # ── usage ─────────────────────────────────────────────────────────────────────
