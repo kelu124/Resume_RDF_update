@@ -3,26 +3,94 @@ resume_rdf.parsing
 ==================
 Helpers for building Anthropic API content blocks from CV files and
 processing the Turtle RDF output returned by the model.
+
+Supported input formats
+-----------------------
+- ``.pdf``   — sent as a base64 document block (native Claude vision)
+- ``.docx``  — text extracted via python-docx, sent as a text block
+- ``.txt`` / ``.md`` / anything else — read as UTF-8 text block
+
+python-docx is an optional dependency required only for ``.docx`` inputs::
+
+    pip install python-docx
+    # or
+    pip install "resume-rdf[docx]"
 """
 
 import base64
+import io
 import os
 import re
 
 
+# ── docx helper ───────────────────────────────────────────────────────────────
+
+def _docx_to_text(source) -> str:
+    """Extract plain text from a .docx file or bytes.
+
+    Iterates paragraphs first, then tables, so structured CVs that use tables
+    for employment history are fully captured.
+
+    Args:
+        source: A file path (str / os.PathLike) or raw ``bytes``.
+
+    Returns:
+        Extracted plain text with one entry per paragraph / table row.
+
+    Raises:
+        ImportError: If ``python-docx`` is not installed.
+    """
+    try:
+        import docx as _docx
+    except ImportError:
+        raise ImportError(
+            "python-docx is required to read .docx files.\n"
+            "Install it with:  pip install python-docx\n"
+            "              or:  pip install \"resume-rdf[docx]\""
+        )
+
+    if isinstance(source, (str, os.PathLike)):
+        doc = _docx.Document(str(source))
+    else:
+        doc = _docx.Document(io.BytesIO(source))
+
+    lines: list[str] = []
+
+    for para in doc.paragraphs:
+        text = para.text.strip()
+        if text:
+            lines.append(text)
+
+    for table in doc.tables:
+        for row in table.rows:
+            cells = [cell.text.strip() for cell in row.cells if cell.text.strip()]
+            if cells:
+                lines.append("  |  ".join(cells))
+
+    return "\n".join(lines)
+
+
+# ── content builders ──────────────────────────────────────────────────────────
+
 def build_user_content_from_path(file_path: str, extra_context: str) -> list:
     """Build the ``messages[0].content`` block from a file path.
 
-    Supports PDF (sent as a base64 document block) and plain text / Markdown
-    (sent as a text block).
+    Supports PDF (sent as a base64 document block), Word documents (text
+    extracted via python-docx), and plain text / Markdown (sent as a text
+    block).
 
     Args:
-        file_path: Absolute or relative path to a ``.pdf``, ``.txt``, or ``.md`` file.
+        file_path: Absolute or relative path to a ``.pdf``, ``.docx``,
+            ``.txt``, or ``.md`` file.
         extra_context: Optional free-text hint appended to the user message
             (e.g. preferred output language, main industry sectors).
 
     Returns:
         A list of content blocks ready for the Anthropic ``messages`` API.
+
+    Raises:
+        ImportError: If a ``.docx`` file is provided but python-docx is not
+            installed.
     """
     ext = os.path.splitext(file_path)[1].lower()
     suffix = (
@@ -47,18 +115,20 @@ def build_user_content_from_path(file_path: str, extra_context: str) -> list:
                 "text": f"Parse this CV into Turtle RDF exactly as instructed.{suffix}",
             },
         ]
+    if ext == ".docx":
+        text = _docx_to_text(file_path)
     else:
         with open(file_path, "r", encoding="utf-8", errors="replace") as f:
             text = f.read()
-        return [
-            {
-                "type": "text",
-                "text": (
-                    f"Parse this CV into Turtle RDF exactly as instructed."
-                    f"{suffix}\n\nCV content:\n\n{text}"
-                ),
-            }
-        ]
+    return [
+        {
+            "type": "text",
+            "text": (
+                f"Parse this CV into Turtle RDF exactly as instructed."
+                f"{suffix}\n\nCV content:\n\n{text}"
+            ),
+        }
+    ]
 
 
 def build_user_content_from_bytes(
@@ -66,16 +136,22 @@ def build_user_content_from_bytes(
 ) -> list:
     """Build the ``messages[0].content`` block from raw bytes.
 
-    Suitable for Streamlit or other contexts where the file is already in memory.
+    Suitable for Streamlit or other contexts where the file is already in
+    memory.
 
     Args:
         file_bytes: Raw file contents.
         file_name: Original filename, used to determine the media type
-            (``*.pdf`` → document block; anything else → text block).
+            (``*.pdf`` → document block; ``*.docx`` → text extracted via
+            python-docx; anything else → UTF-8 text block).
         extra_context: Optional free-text hint appended to the user message.
 
     Returns:
         A list of content blocks ready for the Anthropic ``messages`` API.
+
+    Raises:
+        ImportError: If a ``.docx`` file is provided but python-docx is not
+            installed.
     """
     suffix = (
         f"\n\nAdditional context from the CV owner: {extra_context}"
@@ -99,17 +175,19 @@ def build_user_content_from_bytes(
                 "text": f"Parse this CV into Turtle RDF exactly as instructed.{suffix}",
             },
         ]
+    if ext == "docx":
+        text = _docx_to_text(file_bytes)
     else:
         text = file_bytes.decode("utf-8", errors="replace")
-        return [
-            {
-                "type": "text",
-                "text": (
-                    f"Parse this CV into Turtle RDF exactly as instructed."
-                    f"{suffix}\n\nCV content:\n\n{text}"
-                ),
-            }
-        ]
+    return [
+        {
+            "type": "text",
+            "text": (
+                f"Parse this CV into Turtle RDF exactly as instructed."
+                f"{suffix}\n\nCV content:\n\n{text}"
+            ),
+        }
+    ]
 
 
 def strip_fences(text: str) -> str:

@@ -21,8 +21,9 @@ qa        = ["rdflib>=6.0.0"]
 merge     = ["rdflib>=6.0.0"]
 viz       = ["rdflib>=6.0.0", "pyvis>=0.3.2", "networkx>=3.0", "matplotlib>=3.5"]
 export    = ["rdflib>=6.0.0"]
+docx      = ["python-docx>=0.8.11"]
 dataset   = ["datasets>=2.0.0", "huggingface_hub>=0.20.0"]
-all       = ["resume-rdf[app,validate,dataset,reconcile,qa,merge,viz,export]"]
+all       = ["resume-rdf[app,validate,dataset,reconcile,qa,merge,viz,export,docx]"]
 
 [project.scripts]
 cv-to-rdf    = "resume_rdf.cli:main"

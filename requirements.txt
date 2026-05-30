@@ -11,6 +11,9 @@ pyvis>=0.3.2
 networkx>=3.0
 matplotlib>=3.5
 
+# Word (.docx) input support  (pip install "resume-rdf[docx]")
+python-docx>=0.8.11
+
 # Streamlit web application  (pip install "resume-rdf[app]")
 streamlit>=1.35.0
 
