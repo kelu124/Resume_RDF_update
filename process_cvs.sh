@@ -7,7 +7,7 @@
 #   ./process_cvs.sh <folder> [options]
 #
 # Options:
-#   -o, --output FILE     Output TTL file       (default: merged.ttl)
+#   -o, --output FILE     Output TTL file  (default: <folder>/master_cv.ttl)
 #   -c, --context TEXT    Extra context hint for the parser
 #   -s, --strategy STR    Merge strategy: longest|concat|llm  (default: longest)
 #   -h, --help            Show this help
@@ -17,9 +17,9 @@
 #
 # Examples:
 #   ./process_cvs.sh cvs/
-#   ./process_cvs.sh cvs/ --output team.ttl
+#   ./process_cvs.sh cvs/ --output cvs/team.ttl
 #   ./process_cvs.sh cvs/ --strategy concat --context "Energy sector, UK"
-#   ./process_cvs.sh cvs/ --strategy llm --output enriched.ttl
+#   ./process_cvs.sh cvs/ --strategy llm --output cvs/enriched.ttl
 #
 # Requirements:
 #   pip install "resume-rdf[all]"   (installs cv-to-rdf and cv-merge CLIs)
@@ -27,7 +27,7 @@
 set -uo pipefail
 
 # ── defaults ──────────────────────────────────────────────────────────────────
-OUTPUT="merged.ttl"
+OUTPUT=""   # resolved to <folder>/master_cv.ttl after arg parsing
 CONTEXT=""
 STRATEGY="longest"
 FOLDER=""
@@ -68,6 +68,11 @@ fi
 if [[ ! -d "$FOLDER" ]]; then
     echo "Error: folder not found: $FOLDER" >&2
     exit 1
+fi
+
+# Default output: master_cv.ttl inside the input folder
+if [[ -z "$OUTPUT" ]]; then
+    OUTPUT="$FOLDER/master_cv.ttl"
 fi
 
 if [[ -z "${ANTHROPIC_API_KEY:-}" ]]; then
