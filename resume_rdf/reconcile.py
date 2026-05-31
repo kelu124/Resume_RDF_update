@@ -45,6 +45,7 @@ Library usage
     print(f"{n} merge(s) applied")
 """
 
+import re
 import sys
 from dataclasses import dataclass, field
 from difflib import SequenceMatcher
@@ -283,6 +284,17 @@ _CVX_MOOC_DT    = URIRef(f"{_CVX_STR}moocCompletionDate")
 # Projects (within-graph)
 _CVX_PROJECT    = URIRef(f"{_CVX_STR}Project")
 _CVX_PROJ_NAME  = URIRef(f"{_CVX_STR}projectName")
+_CVX_PROJ_CLIENT = URIRef(f"{_CVX_STR}clientName")
+_CVX_PROJ_START  = URIRef(f"{_CVX_STR}startDate")
+_CVX_PROJ_END    = URIRef(f"{_CVX_STR}endDate")
+_CVX_PROJ_BUDGET = URIRef(f"{_CVX_STR}projectBudget")
+_CVX_PROJ_CAPEX  = URIRef(f"{_CVX_STR}capex")
+_CVX_PROJ_ACT    = URIRef(f"{_CVX_STR}activitiesPerformed")
+_CVX_PROJ_BEN    = URIRef(f"{_CVX_STR}benefitsDelivered")
+_CVX_PROJ_DESC   = URIRef(f"{_CVX_STR}projectDescription")
+_CVX_PROJ_DOMAIN = URIRef(f"{_CVX_STR}domain")
+_CVX_PROJ_SKILL  = URIRef(f"{_CVX_STR}projectSkill")
+_CV_SKILL        = URIRef(f"{_CV_STR}skill")
 
 # Companies / employers (within-graph)
 _CV_COMPANY     = URIRef(f"{_CV_STR}Company")
@@ -301,12 +313,12 @@ _SKILL_LEVEL_RANK: dict[str, int] = {
 
 # Default similarity thresholds per section
 DEFAULT_THRESHOLDS: dict[str, float] = {
-    "skills":        0.82,
+    "skills":        0.75,   # normalised names; catches minor wording differences
     "publications":  0.88,
     "education":     0.85,
-    "training":      0.90,
+    "training":      0.80,   # title-primary (0.80 primary; provider/date secondary)
     "moocs":         0.88,
-    "projects":      0.80,
+    "projects":      0.65,   # composite score: name + client + dates + amount
     "companies":     0.85,
 }
 
@@ -389,21 +401,238 @@ def _richest(g: Graph, node_a: URIRef, node_b: URIRef) -> tuple[URIRef, URIRef]:
         else (node_b, node_a)
 
 
+# ── Text normalisation ────────────────────────────────────────────────────────
+
+# Regex that matches all Unicode dash/hyphen variants
+_DASH_RE = re.compile(
+    r"[-­‐‑‒–—―−﹘﹣－]"
+)
+_PUNC_RE = re.compile(r"[^\w\s\-]")
+_WS_RE   = re.compile(r"\s+")
+
+# Acronym expansions applied during normalisation (cert/training titles)
+_ACRONYM_MAP: dict[str, str] = {
+    "pmp":    "project management professional",
+    "pmi":    "project management institute",
+    "aws":    "amazon web services",
+    "azure":  "microsoft azure",
+    "gcp":    "google cloud platform",
+    "cissp":  "certified information systems security professional",
+    "cisa":   "certified information systems auditor",
+    "cism":   "certified information security manager",
+    "itil":   "information technology infrastructure library",
+    "prince2": "projects in controlled environments",
+    "csm":    "certified scrum master",
+    "cfa":    "chartered financial analyst",
+    "cpa":    "certified public accountant",
+    "mba":    "master of business administration",
+    "agile":  "agile",
+    "lean":   "lean",
+    "six":    "six",   # avoid over-expanding "six sigma"
+}
+
+
+def _normalise_text(s: str) -> str:
+    """Normalise text for robust similarity comparison.
+
+    Applies (in order): lowercase, Unicode dash normalisation to ``-``,
+    punctuation stripping (keeps hyphens and word characters), whitespace
+    collapse, and acronym expansion on isolated tokens.
+    """
+    s = s.strip().lower()
+    s = _DASH_RE.sub("-", s)
+    s = _PUNC_RE.sub(" ", s)
+    s = _WS_RE.sub(" ", s).strip()
+    words = [_ACRONYM_MAP.get(w.strip("-"), w) for w in s.split()]
+    return " ".join(words)
+
+
+# ── Amount extraction (for project budget / CAPEX matching) ──────────────────
+
+_AMOUNT_RE = re.compile(
+    r"(?:[€$£]|eur?|usd?|gbp?)?\s*([\d,]+(?:\.\d+)?)\s*"
+    r"(k|m|b|bn|million|billion|thousand)?",
+    re.IGNORECASE,
+)
+_AMOUNT_SCALE: dict[str, float] = {
+    "k": 1_000,        "thousand": 1_000,
+    "m": 1_000_000,    "million":  1_000_000,
+    "b": 1_000_000_000, "bn": 1_000_000_000, "billion": 1_000_000_000,
+}
+
+
+def _extract_amount(s: str) -> float | None:
+    """Return a numeric value parsed from a budget/CAPEX string, or ``None``."""
+    m = _AMOUNT_RE.search(s)
+    if not m:
+        return None
+    try:
+        num = float(m.group(1).replace(",", ""))
+    except ValueError:
+        return None
+    scale = _AMOUNT_SCALE.get((m.group(2) or "").lower(), 1.0)
+    return num * scale
+
+
+# ── Date-range overlap (for project date matching) ────────────────────────────
+
+_YEAR_RE = re.compile(r"\b(19|20)\d{2}\b")
+
+
+def _parse_year(s: str) -> int | None:
+    """Extract the first four-digit year from *s*, or ``None``."""
+    m = _YEAR_RE.search(s)
+    return int(m.group(0)) if m else None
+
+
+def _date_overlap_score(start_a: str, end_a: str, start_b: str, end_b: str) -> float:
+    """Return an overlap score in ``[0.0, 1.0]`` for two year-based date ranges.
+
+    Returns ``0.5`` (neutral) when not enough date information is available so
+    that missing dates neither help nor hurt the composite score.
+
+    Returns ``1.0`` for a genuine overlap, ``0.3`` when ranges are adjacent
+    (one year apart), ``0.0`` when they do not overlap.
+    """
+    ya_s = _parse_year(start_a)
+    ya_e = _parse_year(end_a) or ya_s
+    yb_s = _parse_year(start_b)
+    yb_e = _parse_year(end_b) or yb_s
+
+    # Not enough info — neutral
+    if not any([ya_s, ya_e, yb_s, yb_e]):
+        return 0.5
+
+    # Fill gaps: single-date projects
+    ya_s = ya_s or ya_e
+    ya_e = ya_e or ya_s
+    yb_s = yb_s or yb_e
+    yb_e = yb_e or yb_s
+
+    if not (ya_s and yb_s):
+        return 0.5
+
+    if ya_s <= yb_e and yb_s <= ya_e:
+        return 1.0
+    gap = min(abs(ya_s - yb_e), abs(yb_s - ya_e))
+    return 0.3 if gap == 1 else 0.0
+
+
+# ── Project composite score ───────────────────────────────────────────────────
+
+def _project_composite_score(g: Graph, node_a: URIRef, node_b: URIRef) -> float:
+    """Return a weighted composite similarity score for two project nodes.
+
+    The score combines four signals:
+
+    * **Name** (weight 0.40) — normalised name fuzzy similarity.
+    * **Client** (weight 0.30) — normalised client-name fuzzy similarity;
+      only counted when both nodes carry a client name.
+    * **Date overlap** (weight 0.20) — year-range overlap score;
+      only counted when at least one node has a date.
+    * **Budget / CAPEX** (weight 0.10) — 1.0 if amounts are within 20% of
+      each other, 0.0 otherwise; only counted when both nodes have an amount.
+
+    Each signal is included only when the required fields are available, and the
+    final score is normalised by the total weight of applied signals.
+    """
+    name_a   = _normalise_text(_first_literal(g, node_a, _CVX_PROJ_NAME))
+    name_b   = _normalise_text(_first_literal(g, node_b, _CVX_PROJ_NAME))
+    client_a = _normalise_text(_first_literal(g, node_a, _CVX_PROJ_CLIENT))
+    client_b = _normalise_text(_first_literal(g, node_b, _CVX_PROJ_CLIENT))
+    start_a  = _first_literal(g, node_a, _CVX_PROJ_START)
+    end_a    = _first_literal(g, node_a, _CVX_PROJ_END)
+    start_b  = _first_literal(g, node_b, _CVX_PROJ_START)
+    end_b    = _first_literal(g, node_b, _CVX_PROJ_END)
+    budget_a = (_first_literal(g, node_a, _CVX_PROJ_BUDGET)
+                or _first_literal(g, node_a, _CVX_PROJ_CAPEX))
+    budget_b = (_first_literal(g, node_b, _CVX_PROJ_BUDGET)
+                or _first_literal(g, node_b, _CVX_PROJ_CAPEX))
+
+    score  = 0.0
+    weight = 0.0
+
+    # Name (always included)
+    name_sim = _similarity(name_a, name_b) if name_a and name_b else 0.0
+    score  += 0.40 * name_sim
+    weight += 0.40
+
+    # Client
+    if client_a and client_b:
+        score  += 0.30 * _similarity(client_a, client_b)
+        weight += 0.30
+
+    # Date overlap
+    if any([start_a, end_a, start_b, end_b]):
+        score  += 0.20 * _date_overlap_score(start_a, end_a, start_b, end_b)
+        weight += 0.20
+
+    # Budget / CAPEX
+    amt_a = _extract_amount(budget_a) if budget_a else None
+    amt_b = _extract_amount(budget_b) if budget_b else None
+    if amt_a is not None and amt_b is not None and max(amt_a, amt_b) > 0:
+        ratio = min(amt_a, amt_b) / max(amt_a, amt_b)
+        score  += 0.10 * (1.0 if ratio >= 0.80 else 0.0)
+        weight += 0.10
+
+    return score / weight if weight > 0 else 0.0
+
+
+# ── Union merge for projects (multi-valued fields get union, not winner-only) ─
+
+_UNION_PREDS: frozenset[URIRef] = frozenset({
+    _CVX_PROJ_ACT,
+    _CVX_PROJ_BEN,
+    _CVX_PROJ_DESC,
+    _CVX_PROJ_DOMAIN,
+    _CVX_PROJ_SKILL,
+    _CV_SKILL,
+})
+
+
+def _union_absorb_node(g: Graph, winner: URIRef, loser: URIRef) -> None:
+    """Merge *loser* into *winner* with union semantics for multi-valued fields.
+
+    For predicates in :data:`_UNION_PREDS` (activities, benefits, descriptions,
+    domains, skills), *all* values from *loser* that are not already on *winner*
+    are added — accumulating the full information from both nodes.  For all other
+    predicates, the winner's existing value is kept (first-write wins).
+    """
+    winner_vals: dict[URIRef, set[str]] = {}
+    for _, p, o in g.triples((winner, None, None)):
+        winner_vals.setdefault(p, set()).add(str(o))
+
+    for _, p, o in list(g.triples((loser, None, None))):
+        if p in _UNION_PREDS:
+            if str(o) not in winner_vals.get(p, set()):
+                g.add((winner, p, o))
+                winner_vals.setdefault(p, set()).add(str(o))
+        elif p not in winner_vals:
+            g.add((winner, p, o))
+            winner_vals[p] = {str(o)}
+
+    _replace_iri_refs(g, loser, winner)
+    _remove_subject(g, loser)
+
+
 # ── Section-specific dedup functions ─────────────────────────────────────────
 
 def dedup_skills(g: Graph, threshold: float = DEFAULT_THRESHOLDS["skills"]) -> int:
     """Deduplicate skill nodes within *g*; return count removed.
 
-    Duplicate detection: ``cv:skillName`` string similarity >= *threshold*.
+    Duplicate detection: normalised ``cv:skillName`` string similarity >= *threshold*.
+    Normalisation (lowercase, dash-normalise, punctuation strip) is applied before
+    fuzzy comparison so that ``"React.js"`` / ``"ReactJS"`` and
+    ``"Machine Learning"`` / ``"machine learning"`` are correctly matched.
 
     Winner selection priority:
     1. Highest skill level (Expert > Advanced > Skilled/Proficient > Intermediate > Beginner/Basic).
     2. Most years of experience.
-    3. Longest skill name (more specific).
+    3. Longer original name (more specific).
 
     Args:
         g: In-place rdflib Graph to deduplicate.
-        threshold: Similarity threshold for name matching (default 0.82).
+        threshold: Similarity threshold on normalised names (default 0.75).
 
     Returns:
         Number of duplicate skill nodes removed.
@@ -414,12 +643,14 @@ def dedup_skills(g: Graph, threshold: float = DEFAULT_THRESHOLDS["skills"]) -> i
     for i, node_a in enumerate(skills):
         if node_a in merged_away:
             continue
-        name_a = _first_literal(g, node_a, _SKILL_NAME)
+        raw_a  = _first_literal(g, node_a, _SKILL_NAME)
+        norm_a = _normalise_text(raw_a)
         for node_b in skills[i + 1:]:
             if node_b in merged_away:
                 continue
-            name_b = _first_literal(g, node_b, _SKILL_NAME)
-            if _similarity(name_a, name_b) < threshold:
+            raw_b  = _first_literal(g, node_b, _SKILL_NAME)
+            norm_b = _normalise_text(raw_b)
+            if not norm_a or not norm_b or _similarity(norm_a, norm_b) < threshold:
                 continue
             rank_a = _SKILL_LEVEL_RANK.get(_first_literal(g, node_a, _SKILL_LVL).lower(), 0)
             rank_b = _SKILL_LEVEL_RANK.get(_first_literal(g, node_b, _SKILL_LVL).lower(), 0)
@@ -428,7 +659,7 @@ def dedup_skills(g: Graph, threshold: float = DEFAULT_THRESHOLDS["skills"]) -> i
             a_wins = (
                 rank_a > rank_b
                 or (rank_a == rank_b and yrs_a > yrs_b)
-                or (rank_a == rank_b and yrs_a == yrs_b and len(name_a) >= len(name_b))
+                or (rank_a == rank_b and yrs_a == yrs_b and len(raw_a) >= len(raw_b))
             )
             winner, loser = (node_a, node_b) if a_wins else (node_b, node_a)
             _absorb_node(g, winner, loser)
@@ -528,13 +759,24 @@ def dedup_education(g: Graph, threshold: float = DEFAULT_THRESHOLDS["education"]
 def dedup_training(g: Graph, threshold: float = DEFAULT_THRESHOLDS["training"]) -> int:
     """Deduplicate training and certification nodes within *g*; return count removed.
 
-    Duplicate detection: similarity of ``(provider, title, date)`` key >= *threshold*.
-    Falls back to ``certificationName`` if ``trainingTitle`` is absent.
-    Winner: node with more triples.
+    Matching strategy (title-primary, provider/date secondary):
+
+    * Title and provider names are normalised before comparison (lowercase,
+      dash-normalise, punctuation strip, common acronym expansion).
+    * **Strong title match** (normalised title similarity >= *threshold*):
+      always treated as a duplicate, regardless of provider or date.
+    * **Weaker title match** (``threshold - 0.15`` ≤ title sim < *threshold*):
+      treated as a duplicate only when the normalised provider also matches
+      (similarity >= 0.70).  Date is used as an optional tiebreaker but is
+      never required.
+    * ``certificationName`` is used as the title fallback when ``trainingTitle``
+      is absent.
+
+    Winner: node with more triples (richer record).
 
     Args:
         g: In-place rdflib Graph to deduplicate.
-        threshold: Key similarity threshold (default 0.90).
+        threshold: Primary title similarity threshold (default 0.80).
 
     Returns:
         Number of duplicate training/certification nodes removed.
@@ -542,32 +784,56 @@ def dedup_training(g: Graph, threshold: float = DEFAULT_THRESHOLDS["training"]) 
     nodes: list[URIRef] = [
         s for s, _, _ in g.triples((None, _RDF_TYPE, _CVX_TRAINING)) if isinstance(s, URIRef)
     ]
-    # Also catch standalone certification nodes (certificationProvider present but no Training type)
     for s, _, _ in g.triples((None, _CVX_CERT, None)):
         if isinstance(s, URIRef) and s not in nodes:
             nodes.append(s)
     merged_away: set[URIRef] = set()
     removed = 0
+    soft_threshold = max(0.0, threshold - 0.15)
+
     for i, node_a in enumerate(nodes):
         if node_a in merged_away:
             continue
-        title_a = _first_literal(g, node_a, _CVX_TRAIN_TTL) or _first_literal(g, node_a, _CVX_CERT)
-        key_a = " ".join([
-            _first_literal(g, node_a, _CVX_PROV) or _first_literal(g, node_a, _CVX_CERT_PROV),
-            title_a,
-            _first_literal(g, node_a, _CVX_TRAIN_DT) or _first_literal(g, node_a, _CVX_CERT_DATE),
-        ]).strip()
+        raw_title_a = (
+            _first_literal(g, node_a, _CVX_TRAIN_TTL)
+            or _first_literal(g, node_a, _CVX_CERT)
+        )
+        raw_prov_a = (
+            _first_literal(g, node_a, _CVX_PROV)
+            or _first_literal(g, node_a, _CVX_CERT_PROV)
+        )
+        title_a = _normalise_text(raw_title_a)
+        prov_a  = _normalise_text(raw_prov_a)
+
         for node_b in nodes[i + 1:]:
             if node_b in merged_away:
                 continue
-            title_b = _first_literal(g, node_b, _CVX_TRAIN_TTL) or _first_literal(g, node_b, _CVX_CERT)
-            key_b = " ".join([
-                _first_literal(g, node_b, _CVX_PROV) or _first_literal(g, node_b, _CVX_CERT_PROV),
-                title_b,
-                _first_literal(g, node_b, _CVX_TRAIN_DT) or _first_literal(g, node_b, _CVX_CERT_DATE),
-            ]).strip()
-            if not key_a or not key_b or _similarity(key_a, key_b) < threshold:
+            raw_title_b = (
+                _first_literal(g, node_b, _CVX_TRAIN_TTL)
+                or _first_literal(g, node_b, _CVX_CERT)
+            )
+            raw_prov_b = (
+                _first_literal(g, node_b, _CVX_PROV)
+                or _first_literal(g, node_b, _CVX_CERT_PROV)
+            )
+            title_b = _normalise_text(raw_title_b)
+            prov_b  = _normalise_text(raw_prov_b)
+
+            if not title_a or not title_b:
                 continue
+
+            title_sim = _similarity(title_a, title_b)
+
+            if title_sim >= threshold:
+                # Strong title match — always a duplicate
+                pass
+            elif title_sim >= soft_threshold:
+                # Weaker title match — require provider confirmation
+                if not prov_a or not prov_b or _similarity(prov_a, prov_b) < 0.70:
+                    continue
+            else:
+                continue
+
             winner, loser = _richest(g, node_a, node_b)
             _absorb_node(g, winner, loser)
             merged_away.add(loser)
@@ -623,18 +889,34 @@ def dedup_moocs(g: Graph, threshold: float = DEFAULT_THRESHOLDS["moocs"]) -> int
 
 
 def dedup_projects(g: Graph, threshold: float = DEFAULT_THRESHOLDS["projects"]) -> int:
-    """Deduplicate project nodes within a *single* graph.
+    """Deduplicate project nodes within a *single* graph using multi-field composite scoring.
 
     Intended for within-graph duplicates only (e.g. two sections of the same
-    CV both mention the same project).  Cross-file project reconciliation is
+    CV describe the same project differently).  Cross-file reconciliation is
     handled by :func:`reconcile_interactive`.
 
-    Duplicate detection: ``cvx:projectName`` similarity >= *threshold*.
-    Winner: node with more triples.
+    Composite score weights:
+
+    * **Name** (0.40) — normalised project-name fuzzy similarity; always included.
+    * **Client** (0.30) — normalised client-name fuzzy similarity; included only
+      when *both* nodes carry a client name.
+    * **Date overlap** (0.20) — year-range overlap score; included when at least
+      one node has a start or end date.
+    * **Budget / CAPEX** (0.10) — 1.0 if parsed amounts are within 20% of each
+      other, 0.0 otherwise; included when both nodes carry an amount.
+
+    The composite score is normalised by the total weight of applied signals, so
+    a pair with no client or date data is still evaluated fairly on name alone.
+    A pair with strongly matching client + dates can be flagged as a duplicate
+    even when the project names differ significantly.
+
+    On merge, multi-valued project fields (activities, benefits, descriptions,
+    domains, skills) are *unioned* rather than winner-takes-all, so no
+    information is lost.  Winner is the node with more triples.
 
     Args:
         g: In-place rdflib Graph to deduplicate.
-        threshold: Name similarity threshold (default 0.80).
+        threshold: Composite score threshold (default 0.65).
 
     Returns:
         Number of duplicate project nodes removed.
@@ -651,15 +933,13 @@ def dedup_projects(g: Graph, threshold: float = DEFAULT_THRESHOLDS["projects"]) 
     for i, node_a in enumerate(nodes):
         if node_a in merged_away:
             continue
-        name_a = _first_literal(g, node_a, _CVX_PROJ_NAME)
         for node_b in nodes[i + 1:]:
             if node_b in merged_away:
                 continue
-            name_b = _first_literal(g, node_b, _CVX_PROJ_NAME)
-            if not name_a or not name_b or _similarity(name_a, name_b) < threshold:
+            if _project_composite_score(g, node_a, node_b) < threshold:
                 continue
             winner, loser = _richest(g, node_a, node_b)
-            _absorb_node(g, winner, loser)
+            _union_absorb_node(g, winner, loser)
             merged_away.add(loser)
             removed += 1
     return removed
