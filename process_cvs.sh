@@ -146,10 +146,11 @@ for cv_file in "${CV_FILES[@]}"; do
 
     echo "→ Parsing: $filename"
 
-    parse_args=("$cv_file" "--output" "$out_ttl")
+    _context="CV process output MUST BE in English."
     if [[ -n "$CONTEXT" ]]; then
-        parse_args+=("--context" "$CONTEXT")
+        _context="$_context $CONTEXT"
     fi
+    parse_args=("$cv_file" "--output" "$out_ttl" "--context" "$_context")
 
     if "$CV_TO_RDF" "${parse_args[@]}"; then
         if [[ -f "$out_ttl" && -s "$out_ttl" ]]; then
