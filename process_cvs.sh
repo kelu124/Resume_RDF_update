@@ -177,19 +177,7 @@ if [[ $FAILED -gt 0 ]]; then
     echo ""
 fi
 
-# ── merge (or copy if only one TTL) ──────────────────────────────────────────
-if [[ ${#TTL_FILES[@]} -eq 1 ]]; then
-    echo "Single TTL generated — copying to: $OUTPUT"
-    cp "${TTL_FILES[0]}" "$OUTPUT"
-else
-    echo "Merging ${#TTL_FILES[@]} TTL files (strategy: $STRATEGY) → $OUTPUT"
-    "$CV_MERGE" "${TTL_FILES[@]}" --output "$OUTPUT" --strategy "$STRATEGY"
-fi
-
-echo ""
-echo "Done.  Output written to: $OUTPUT"
-
-# ── reconcile cross-file entity IRIs (if multiple TTLs were merged) ──────────
+# ── reconcile cross-file entity IRIs before merging ──────────────────────────
 CV_RECONCILE=$(command -v cv-reconcile 2>/dev/null || true)
 if [[ -n "$CV_RECONCILE" && ${#TTL_FILES[@]} -gt 1 ]]; then
     echo "Running cross-file entity reconciliation…"
@@ -201,6 +189,19 @@ else
     echo "Note: cv-reconcile not found — skipping cross-file IRI reconciliation."
     echo "Install with:  pip install \"resume-rdf[all]\""
 fi
+echo ""
+
+# ── merge (or copy if only one TTL) ──────────────────────────────────────────
+if [[ ${#TTL_FILES[@]} -eq 1 ]]; then
+    echo "Single TTL generated — copying to: $OUTPUT"
+    cp "${TTL_FILES[0]}" "$OUTPUT"
+else
+    echo "Merging ${#TTL_FILES[@]} TTL files (strategy: $STRATEGY) → $OUTPUT"
+    "$CV_MERGE" "${TTL_FILES[@]}" --output "$OUTPUT" --strategy "$STRATEGY"
+fi
+
+echo ""
+echo "Done.  Output written to: $OUTPUT"
 echo ""
 
 # ── generate markdown CV ──────────────────────────────────────────────────────

@@ -347,7 +347,7 @@ DEFAULT_THRESHOLDS: dict[str, float] = {
     "education":     0.85,
     "training":      0.80,   # title-primary (0.80 primary; provider/date secondary)
     "moocs":         0.88,
-    "projects":      0.65,   # composite score: name + client + dates + amount
+    "projects":      0.80,   # composite score: name + client + dates + amount
     "companies":     0.85,
 }
 
