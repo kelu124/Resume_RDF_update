@@ -54,7 +54,7 @@ from typing import Literal as TypingLiteral
 
 from rdflib import Graph, Literal, URIRef
 
-from resume_rdf.reconcile import apply_mapping, find_matches, load_entities
+from resume_rdf.reconcile import apply_mapping, deduplicate_graph, find_matches, load_entities
 
 # ---------------------------------------------------------------------------
 # Predicate buckets
@@ -113,6 +113,7 @@ class MergeStats:
     output_triples: int
     llm_calls: int = field(default=0)
     llm_cache_hits: int = field(default=0)
+    dedup_removed: int = field(default=0)
 
 
 # ---------------------------------------------------------------------------
@@ -399,6 +400,12 @@ def consolidate_ttls(
             merged.add((s, p, _resolve_literals(p, literals, strategy, api_key, model, stats)))
 
     # ------------------------------------------------------------------
+    # Step 3b: deduplication
+    # ------------------------------------------------------------------
+    dedup_stats = deduplicate_graph(merged)
+    stats.dedup_removed = dedup_stats.total
+
+    # ------------------------------------------------------------------
     # Step 4: serialise
     # ------------------------------------------------------------------
     output_file.parent.mkdir(parents=True, exist_ok=True)
@@ -458,6 +465,7 @@ def main(argv: list[str] | None = None) -> None:
     print(f"  Strategy             : {args.strategy}")
     print(f"  IRI mappings applied : {stats.iri_mappings}")
     print(f"  Conflicts resolved   : {stats.conflicts_resolved}")
+    print(f"  Duplicates removed   : {stats.dedup_removed}")
     if args.strategy == "llm":
         print(f"  LLM API calls        : {stats.llm_calls}")
         print(f"  LLM cache hits       : {stats.llm_cache_hits}")
