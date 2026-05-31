@@ -125,7 +125,7 @@ fi
 CV_FILES=()
 while IFS= read -r -d '' f; do
     CV_FILES+=("$f")
-done < <(find "$FOLDER" -maxdepth 1 \( -iname "*.pdf" -o -iname "*.docx" \) -print0 | sort -z)
+done < <(find "$FOLDER" -maxdepth 1 \( -iname "*.pdf" -o -iname "*.docx" -o -iname "*.doc" \) -print0 | sort -z)
 
 if [[ ${#CV_FILES[@]} -eq 0 ]]; then
     echo "No .pdf or .docx files found in: $FOLDER" >&2

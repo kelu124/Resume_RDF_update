@@ -97,8 +97,8 @@ def main(argv: list[str] | None = None) -> None:
         sys.exit(f"Error: file not found: {args.cv_file}")
 
     ext = os.path.splitext(args.cv_file)[1].lower()
-    if ext not in {".pdf", ".docx", ".txt", ".md"}:
-        sys.exit(f"Error: unsupported file type '{ext}'. Supported: .pdf, .docx, .txt, .md")
+    if ext not in {".pdf", ".docx", ".doc", ".txt", ".md"}:
+        sys.exit(f"Error: unsupported file type '{ext}'. Supported: .pdf, .docx, .doc, .txt, .md")
 
     api_key = args.api_key or os.environ.get("ANTHROPIC_API_KEY")
     if not api_key:

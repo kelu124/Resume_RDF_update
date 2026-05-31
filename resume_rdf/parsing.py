@@ -21,6 +21,55 @@ import base64
 import io
 import os
 import re
+import shutil
+import subprocess
+import tempfile
+
+
+# ── doc helper (old binary Word format) ──────────────────────────────────────
+
+def _doc_to_text(source) -> str:
+    """Extract plain text from a legacy .doc (Word 97–2003) file.
+
+    Uses ``antiword`` when available; falls back to ``catdoc`` if present.
+    Both are standard Unix/Linux packages installable via ``apt install antiword``.
+
+    Args:
+        source: A file path (str / os.PathLike) or raw ``bytes``.
+
+    Returns:
+        Extracted plain text.
+
+    Raises:
+        RuntimeError: If neither ``antiword`` nor ``catdoc`` is available.
+    """
+    tool = shutil.which("antiword") or shutil.which("catdoc")
+    if not tool:
+        raise RuntimeError(
+            "Reading .doc files requires 'antiword' or 'catdoc'.\n"
+            "Install with:  sudo apt install antiword\n"
+            "           or: sudo apt install catdoc"
+        )
+
+    if isinstance(source, (str, os.PathLike)):
+        result = subprocess.run(
+            [tool, str(source)],
+            capture_output=True, text=True, check=False,
+        )
+        return result.stdout or result.stderr
+    else:
+        # bytes: write to a temp file, run the tool, then clean up
+        with tempfile.NamedTemporaryFile(suffix=".doc", delete=False) as tmp:
+            tmp.write(source)
+            tmp_path = tmp.name
+        try:
+            result = subprocess.run(
+                [tool, tmp_path],
+                capture_output=True, text=True, check=False,
+            )
+            return result.stdout or result.stderr
+        finally:
+            os.unlink(tmp_path)
 
 
 # ── docx helper ───────────────────────────────────────────────────────────────
@@ -117,6 +166,8 @@ def build_user_content_from_path(file_path: str, extra_context: str) -> list:
         ]
     if ext == ".docx":
         text = _docx_to_text(file_path)
+    elif ext == ".doc":
+        text = _doc_to_text(file_path)
     else:
         with open(file_path, "r", encoding="utf-8", errors="replace") as f:
             text = f.read()
@@ -177,6 +228,8 @@ def build_user_content_from_bytes(
         ]
     if ext == "docx":
         text = _docx_to_text(file_bytes)
+    elif ext == "doc":
+        text = _doc_to_text(file_bytes)
     else:
         text = file_bytes.decode("utf-8", errors="replace")
     return [

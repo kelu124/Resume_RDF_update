@@ -45,6 +45,9 @@ Library usage
     print(f"{n} merge(s) applied")
 """
 
+import hashlib
+import json
+import os
 import re
 import sys
 from dataclasses import dataclass, field
@@ -300,6 +303,24 @@ _CV_SKILL        = URIRef(f"{_CV_STR}skill")
 _CV_COMPANY     = URIRef(f"{_CV_STR}Company")
 _CV_COMP_NAME   = URIRef(f"{_CV_STR}Name")
 
+# WorkHistory → Project linkage (used for employer lookup during LLM escalation)
+_CVX_HAS_PROJECT = URIRef(f"{_CVX_STR}hasProject")
+_CV_EMPLOYED_IN  = URIRef(f"{_CV_STR}employedIn")
+_CV_WH_JOB_TTL   = URIRef(f"{_CV_STR}jobTitle")
+_CV_WH_START     = URIRef(f"{_CV_STR}startDate")
+_CV_WH_END       = URIRef(f"{_CV_STR}endDate")
+
+# LLM-assisted dedup (ambiguous project pairs)
+_LLM_DEDUP_MODEL = "claude-haiku-4-5-20251001"
+_LLM_DEDUP_SYSTEM = (
+    "You are an expert CV analyst. "
+    "You will be shown two work-experience entries from the same person's CV. "
+    "Determine whether they describe the same work experience — same role, same employer, "
+    "same approximate time period — even if phrased very differently. "
+    "Answer with EXACTLY this format: YES: <reason up to 20 words>  OR  NO: <reason up to 20 words>. "
+    "No other text."
+)
+
 # Skill level ranking (higher → better)
 _SKILL_LEVEL_RANK: dict[str, int] = {
     "expert": 5,
@@ -329,13 +350,15 @@ class DeduplicationStats:
 
     The ``total`` property sums all section counts.
     """
-    skills:        int = field(default=0)
-    publications:  int = field(default=0)
-    education:     int = field(default=0)
-    training:      int = field(default=0)
-    moocs:         int = field(default=0)
-    projects:      int = field(default=0)
-    companies:     int = field(default=0)
+    skills:              int = field(default=0)
+    publications:        int = field(default=0)
+    education:           int = field(default=0)
+    training:            int = field(default=0)
+    moocs:               int = field(default=0)
+    projects:            int = field(default=0)
+    companies:           int = field(default=0)
+    llm_dedup_calls:     int = field(default=0)
+    llm_dedup_cache_hits: int = field(default=0)
 
     @property
     def total(self) -> int:
@@ -971,10 +994,127 @@ def dedup_moocs(
     return removed
 
 
+# ── LLM-assisted project dedup helpers ──────────────────────────────────────
+
+def _dedup_cache_dir() -> Path:
+    d = Path(os.environ.get("LLM_CACHE_DIR", Path(__file__).parent.parent / "cache"))
+    d.mkdir(parents=True, exist_ok=True)
+    return d
+
+
+def _dedup_cache_key(fields_a: dict, fields_b: dict, model: str) -> str:
+    payload = json.dumps(
+        {"a": fields_a, "b": fields_b, "model": model},
+        sort_keys=True, ensure_ascii=False,
+    ).encode()
+    return "proj_dedup_" + hashlib.sha256(payload).hexdigest()
+
+
+def _dedup_cache_load(key: str) -> tuple[bool, str] | None:
+    path = _dedup_cache_dir() / f"{key}.json"
+    if not path.exists():
+        return None
+    data = json.loads(path.read_text(encoding="utf-8"))
+    return data["same"], data["reason"]
+
+
+def _dedup_cache_save(key: str, same: bool, reason: str) -> None:
+    path = _dedup_cache_dir() / f"{key}.json"
+    path.write_text(
+        json.dumps({"same": same, "reason": reason}, ensure_ascii=False),
+        encoding="utf-8",
+    )
+
+
+def _project_fields(g: Graph, node: URIRef) -> dict:
+    """Collect the human-readable fields of a project node for LLM prompting and caching."""
+    # Try to find the parent WorkHistory node for employer info
+    employer = ""
+    wh_start = ""
+    wh_end = ""
+    for wh, _, _ in g.triples((None, _CVX_HAS_PROJECT, node)):
+        employer = (
+            _first_str(g, wh, _CV_EMPLOYED_IN)
+            or _first_literal(g, wh, _CV_WH_JOB_TTL)
+        )
+        wh_start = _first_literal(g, wh, _CV_WH_START)
+        wh_end   = _first_literal(g, wh, _CV_WH_END)
+        break
+
+    return {
+        "name":       _first_literal(g, node, _CVX_PROJ_NAME),
+        "title":      _first_literal(g, node, URIRef(f"{_CVX_STR}roleTitle")),
+        "employer":   employer,
+        "client":     _first_literal(g, node, _CVX_PROJ_CLIENT),
+        "start":      _first_literal(g, node, _CVX_PROJ_START) or wh_start,
+        "end":        _first_literal(g, node, _CVX_PROJ_END)   or wh_end,
+        "description": _first_literal(g, node, _CVX_PROJ_DESC),
+        "activities":  _first_literal(g, node, _CVX_PROJ_ACT),
+    }
+
+
+def _llm_check_same_project(
+    fields_a: dict,
+    fields_b: dict,
+    api_key: str,
+    model: str,
+    _llm_counts: list[int],
+) -> tuple[bool, str]:
+    """Ask Claude Haiku whether two project field-sets describe the same experience.
+
+    Returns (is_same, reason_string).  Results are cached by SHA-256 of content.
+    """
+    import anthropic  # lazy import — only needed for llm escalation
+
+    key = _dedup_cache_key(fields_a, fields_b, model)
+    cached = _dedup_cache_load(key)
+    if cached is not None:
+        _llm_counts[1] += 1  # cache hit
+        return cached
+
+    def _fmt(fields: dict) -> str:
+        parts = []
+        if fields.get("name"):
+            parts.append(f"Project: {fields['name']}")
+        if fields.get("title"):
+            parts.append(f"Role: {fields['title']}")
+        if fields.get("employer"):
+            parts.append(f"Employer: {fields['employer']}")
+        if fields.get("client"):
+            parts.append(f"Client: {fields['client']}")
+        if fields.get("start") or fields.get("end"):
+            parts.append(f"Dates: {fields.get('start', '?')} – {fields.get('end', '?')}")
+        if fields.get("description"):
+            parts.append(f"Description: {fields['description'][:300]}")
+        if fields.get("activities"):
+            parts.append(f"Activities: {fields['activities'][:200]}")
+        return "\n".join(parts)
+
+    prompt = f"Entry A:\n{_fmt(fields_a)}\n\nEntry B:\n{_fmt(fields_b)}"
+    client = anthropic.Anthropic(api_key=api_key)
+    response = client.messages.create(
+        model=model,
+        max_tokens=128,
+        system=_LLM_DEDUP_SYSTEM,
+        messages=[{"role": "user", "content": prompt}],
+    )
+    raw = response.content[0].text.strip()
+    same = raw.upper().startswith("YES")
+    reason = raw[raw.find(":") + 1:].strip() if ":" in raw else raw
+
+    _dedup_cache_save(key, same, reason)
+    _llm_counts[0] += 1  # API call
+    return same, reason
+
+
 def dedup_projects(
     g: Graph,
     threshold: float = DEFAULT_THRESHOLDS["projects"],
     verbose: bool = False,
+    api_key: str | None = None,
+    model: str = _LLM_DEDUP_MODEL,
+    llm_low: float = 0.40,
+    _llm_counts: list[int] | None = None,
 ) -> int:
     """Deduplicate project nodes within a *single* graph using multi-field composite scoring.
 
@@ -997,6 +1137,11 @@ def dedup_projects(
     A pair with strongly matching client + dates can be flagged as a duplicate
     even when the project names differ significantly.
 
+    Pairs whose composite falls in the **ambiguous zone** [*llm_low*, *threshold*)
+    are escalated to Claude Haiku when *api_key* is provided (or
+    ``ANTHROPIC_API_KEY`` is set).  The LLM is asked whether the two entries
+    describe the same experience; its decision is cached by content hash.
+
     On merge, multi-valued project fields (activities, benefits, descriptions,
     domains, skills) are *unioned* rather than winner-takes-all, so no
     information is lost.  Winner is the node with more triples.
@@ -1005,10 +1150,22 @@ def dedup_projects(
         g: In-place rdflib Graph to deduplicate.
         threshold: Composite score threshold (default 0.65).
         verbose: If ``True``, print a log line for every merge decision.
+        api_key: Anthropic API key for LLM escalation.  Falls back to the
+            ``ANTHROPIC_API_KEY`` environment variable.
+        model: Claude model for LLM escalation (default: ``claude-haiku-4-5-20251001``).
+        llm_low: Lower bound of the ambiguous zone (default 0.40).  Pairs with
+            composite < *llm_low* are never escalated.
+        _llm_counts: Internal mutable ``[calls, cache_hits]`` accumulator;
+            callers should leave this as ``None``.
 
     Returns:
         Number of duplicate project nodes removed.
     """
+    if _llm_counts is None:
+        _llm_counts = [0, 0]
+
+    _effective_api_key: str | None = api_key or os.environ.get("ANTHROPIC_API_KEY")
+
     nodes: list[URIRef] = []
     for s, _, _ in g.triples((None, _RDF_TYPE, _CVX_PROJECT)):
         if isinstance(s, URIRef):
@@ -1018,6 +1175,10 @@ def dedup_projects(
             nodes.append(s)
     merged_away: set[URIRef] = set()
     removed = 0
+
+    def _fs(v: float | None) -> str:
+        return f"{v:.2f}" if v is not None else "—"
+
     for i, node_a in enumerate(nodes):
         if node_a in merged_away:
             continue
@@ -1025,22 +1186,52 @@ def dedup_projects(
             if node_b in merged_away:
                 continue
             composite, detail = _project_composite_score(g, node_a, node_b)
-            if composite < threshold:
+
+            if composite >= threshold:
+                # High-confidence match — merge directly
+                decision = "merge"
+                llm_reason = ""
+            elif composite >= llm_low and _effective_api_key:
+                # Ambiguous zone — escalate to LLM when dates aren't clearly incompatible
+                dates_sig = detail.get("dates")
+                if dates_sig is not None and dates_sig == 0.0:
+                    # Dates clearly don't overlap — skip
+                    continue
+                fa = _project_fields(g, node_a)
+                fb = _project_fields(g, node_b)
+                same, llm_reason = _llm_check_same_project(
+                    fa, fb, _effective_api_key, model, _llm_counts
+                )
+                decision = "llm-yes" if same else "llm-no"
+            else:
                 continue
+
+            if decision == "llm-no":
+                if verbose:
+                    name_a_str = _first_literal(g, node_a, _CVX_PROJ_NAME)
+                    name_b_str = _first_literal(g, node_b, _CVX_PROJ_NAME)
+                    breakdown = (
+                        f"name={_fs(detail['name'])} client={_fs(detail['client'])}"
+                        f" dates={_fs(detail['dates'])} capex={_fs(detail['capex'])}"
+                    )
+                    print(f"[dedup:projects]  LLM-NO  composite={composite:.2f} [{breakdown}]"
+                          f"  {name_a_str!r} ~ {name_b_str!r}  reason: {llm_reason}")
+                continue
+
             winner, loser = _richest(g, node_a, node_b)
             if verbose:
-                def _fs(v: float | None) -> str:
-                    return f"{v:.2f}" if v is not None else "—"
                 name_a_str = _first_literal(g, node_a, _CVX_PROJ_NAME)
                 name_b_str = _first_literal(g, node_b, _CVX_PROJ_NAME)
                 breakdown = (
                     f"name={_fs(detail['name'])} client={_fs(detail['client'])}"
                     f" dates={_fs(detail['dates'])} capex={_fs(detail['capex'])}"
                 )
-                w_triples  = _triple_count(g, winner)
-                print(f"[dedup:projects]  MATCH  composite={composite:.2f} [{breakdown}]"
+                w_triples = _triple_count(g, winner)
+                how = f"composite={composite:.2f}" if decision == "merge" else f"llm composite={composite:.2f}"
+                suffix = f"  reason: {llm_reason}" if llm_reason else ""
+                print(f"[dedup:projects]  MATCH  {how} [{breakdown}]"
                       f"  {name_a_str!r} ~ {name_b_str!r}"
-                      f"  → union-merge <{winner}> ({w_triples} triples)  | drop <{loser}>")
+                      f"  → union-merge <{winner}> ({w_triples} triples)  | drop <{loser}>{suffix}")
             _union_absorb_node(g, winner, loser)
             merged_away.add(loser)
             removed += 1
@@ -1099,6 +1290,9 @@ def deduplicate_graph(
     g: Graph,
     thresholds: dict[str, float] | None = None,
     verbose: bool = False,
+    api_key: str | None = None,
+    model: str = _LLM_DEDUP_MODEL,
+    llm_low: float = 0.40,
 ) -> DeduplicationStats:
     """Run all section-aware deduplication passes on *g* in-place.
 
@@ -1152,16 +1346,33 @@ def deduplicate_graph(
         print(f"Removed {stats.total} duplicate nodes")
     """
     t = {**DEFAULT_THRESHOLDS, **(thresholds or {})}
+    _llm_counts: list[int] = [0, 0]  # [calls, cache_hits]
     stats = DeduplicationStats(
         companies    = dedup_companies(g,    threshold=t["companies"],    verbose=verbose),
-        projects     = dedup_projects(g,     threshold=t["projects"],     verbose=verbose),
+        projects     = dedup_projects(
+            g,
+            threshold=t["projects"],
+            verbose=verbose,
+            api_key=api_key,
+            model=model,
+            llm_low=llm_low,
+            _llm_counts=_llm_counts,
+        ),
         skills       = dedup_skills(g,       threshold=t["skills"],       verbose=verbose),
         publications = dedup_publications(g, threshold=t["publications"], verbose=verbose),
         education    = dedup_education(g,    threshold=t["education"],    verbose=verbose),
         training     = dedup_training(g,     threshold=t["training"],     verbose=verbose),
         moocs        = dedup_moocs(g,        threshold=t["moocs"],        verbose=verbose),
+        llm_dedup_calls      = _llm_counts[0],
+        llm_dedup_cache_hits = _llm_counts[1],
     )
     if verbose:
+        llm_info = ""
+        if _llm_counts[0] or _llm_counts[1]:
+            llm_info = (
+                f"  llm_calls:{_llm_counts[0]}"
+                f"  llm_cache_hits:{_llm_counts[1]}"
+            )
         print(
             f"[dedup] SUMMARY"
             f"  skills:{stats.skills}"
@@ -1172,6 +1383,7 @@ def deduplicate_graph(
             f"  projects:{stats.projects}"
             f"  companies:{stats.companies}"
             f"  total:{stats.total}"
+            + llm_info
         )
     return stats
 

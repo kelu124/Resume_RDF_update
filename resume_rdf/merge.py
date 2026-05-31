@@ -403,7 +403,7 @@ def consolidate_ttls(
     # ------------------------------------------------------------------
     # Step 3b: within-graph deduplication
     # ------------------------------------------------------------------
-    dedup_stats = deduplicate_graph(merged, verbose=verbose)
+    dedup_stats = deduplicate_graph(merged, verbose=verbose, api_key=api_key)
     stats.dedup_removed = dedup_stats.total
 
     # ------------------------------------------------------------------
