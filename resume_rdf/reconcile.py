@@ -270,13 +270,20 @@ _CV_INST        = URIRef(f"{_CV_STR}studiedIn")
 _CV_GRAD_DATE   = URIRef(f"{_CV_STR}eduGradDate")
 
 # Training & certifications
-_CVX_TRAINING   = URIRef(f"{_CVX_STR}Training")
-_CVX_TRAIN_TTL  = URIRef(f"{_CVX_STR}trainingTitle")
-_CVX_PROV       = URIRef(f"{_CVX_STR}trainingProvider")
-_CVX_TRAIN_DT   = URIRef(f"{_CVX_STR}trainingDate")
-_CVX_CERT       = URIRef(f"{_CVX_STR}certificationName")
-_CVX_CERT_DATE  = URIRef(f"{_CVX_STR}certificationDate")
-_CVX_CERT_PROV  = URIRef(f"{_CVX_STR}certificationProvider")
+_CVX_TRAINING       = URIRef(f"{_CVX_STR}Training")
+_CVX_TRAIN_TTL      = URIRef(f"{_CVX_STR}trainingTitle")
+_CVX_PROV           = URIRef(f"{_CVX_STR}trainingProvider")
+_CVX_TRAIN_DT       = URIRef(f"{_CVX_STR}trainingDate")
+_CVX_CERT           = URIRef(f"{_CVX_STR}certificationName")
+_CVX_CERT_DATE      = URIRef(f"{_CVX_STR}certificationDate")
+_CVX_CERT_PROV      = URIRef(f"{_CVX_STR}certificationProvider")
+# cvx:Certification subclass (Suggestion 4)
+_CVX_CERTIFICATION  = URIRef(f"{_CVX_STR}Certification")
+_CVX_CERT_ID        = URIRef(f"{_CVX_STR}certificationID")
+_CVX_CERT_EXPIRY    = URIRef(f"{_CVX_STR}certificationExpiry")
+_CVX_CERT_PLATFORM  = URIRef(f"{_CVX_STR}certificationPlatform")
+_CVX_CERT_DESC      = URIRef(f"{_CVX_STR}certificationDescription")
+_CVX_HAS_CERT       = URIRef(f"{_CVX_STR}hasCertification")
 
 # MOOCs  (actual ontology predicates: cvx:courseTitle / courseProvider / completionDate)
 _CVX_MOOC       = URIRef(f"{_CVX_STR}MOOC")
@@ -300,8 +307,9 @@ _CVX_PROJ_SKILL  = URIRef(f"{_CVX_STR}projectSkill")
 _CV_SKILL        = URIRef(f"{_CV_STR}skill")
 
 # Companies / employers (within-graph)
-_CV_COMPANY     = URIRef(f"{_CV_STR}Company")
-_CV_COMP_NAME   = URIRef(f"{_CV_STR}Name")
+_CV_COMPANY          = URIRef(f"{_CV_STR}Company")
+_CV_COMP_NAME        = URIRef(f"{_CV_STR}Name")
+_CVX_COMP_LINKEDIN   = URIRef(f"{_CVX_STR}companyLinkedInURL")
 
 # WorkHistory → Project linkage (used for employer lookup during LLM escalation)
 _CVX_HAS_PROJECT = URIRef(f"{_CVX_STR}hasProject")
@@ -503,7 +511,11 @@ _YEAR_RE = re.compile(r"\b(19|20)\d{2}\b")
 
 
 def _parse_year(s: str) -> int | None:
-    """Extract the first four-digit year from *s*, or ``None``."""
+    """Extract the first four-digit year from *s*, or ``None``.
+
+    Works with all XSD date types: xsd:date ("2019-06-15"), xsd:gYearMonth
+    ("2019-06"), and xsd:gYear ("2019") — the year component is always first.
+    """
     m = _YEAR_RE.search(s)
     return int(m.group(0)) if m else None
 
@@ -864,6 +876,10 @@ def dedup_training(
     nodes: list[URIRef] = [
         s for s, _, _ in g.triples((None, _RDF_TYPE, _CVX_TRAINING)) if isinstance(s, URIRef)
     ]
+    # cvx:Certification is a subclass of cvx:Training — dedup the same way
+    for s, _, _ in g.triples((None, _RDF_TYPE, _CVX_CERTIFICATION)):
+        if isinstance(s, URIRef) and s not in nodes:
+            nodes.append(s)
     for s, _, _ in g.triples((None, _CVX_CERT, None)):
         if isinstance(s, URIRef) and s not in nodes:
             nodes.append(s)
@@ -1245,7 +1261,11 @@ def dedup_companies(
 ) -> int:
     """Deduplicate company/employer nodes within a *single* graph.
 
-    Duplicate detection: ``cv:Name`` similarity >= *threshold*.
+    Duplicate detection (in priority order):
+    1. Exact ``cvx:companyLinkedInURL`` match — always treated as a duplicate
+       regardless of how the company name is phrased.
+    2. ``cv:Name`` fuzzy similarity >= *threshold*.
+
     Winner: node with more triples.
 
     Args:
@@ -1268,17 +1288,27 @@ def dedup_companies(
     for i, node_a in enumerate(nodes):
         if node_a in merged_away:
             continue
-        name_a = _first_literal(g, node_a, _CV_COMP_NAME)
+        name_a    = _first_literal(g, node_a, _CV_COMP_NAME)
+        linkedin_a = _first_str(g, node_a, _CVX_COMP_LINKEDIN).rstrip("/").lower()
         for node_b in nodes[i + 1:]:
             if node_b in merged_away:
                 continue
-            name_b = _first_literal(g, node_b, _CV_COMP_NAME)
-            sim = _similarity(name_a, name_b)
-            if not name_a or not name_b or sim < threshold:
+            name_b     = _first_literal(g, node_b, _CV_COMP_NAME)
+            linkedin_b = _first_str(g, node_b, _CVX_COMP_LINKEDIN).rstrip("/").lower()
+
+            # Priority 1: stable identifier match
+            linkedin_match = bool(linkedin_a and linkedin_b and linkedin_a == linkedin_b)
+            # Priority 2: fuzzy name match
+            sim = _similarity(name_a, name_b) if name_a and name_b else 0.0
+            name_match = sim >= threshold
+
+            if not (linkedin_match or name_match):
                 continue
+
             winner, loser = _richest(g, node_a, node_b)
             if verbose:
-                print(f"[dedup:companies]  MATCH  {name_a!r} ~ {name_b!r}  sim={sim:.2f}"
+                how = "linkedin=exact" if linkedin_match else f"name_sim={sim:.2f}"
+                print(f"[dedup:companies]  MATCH  {name_a!r} ~ {name_b!r}  {how}"
                       f"  → keep <{winner}>  | drop <{loser}>")
             _absorb_node(g, winner, loser)
             merged_away.add(loser)
@@ -1457,7 +1487,7 @@ def reconcile_interactive(
         if canon_a == canon_b:
             continue  # already unified by a prior merge
 
-        print(f"── [{idx}/{len(matches)}]  {match.kind.upper()}  "
+        print(f"── [{idx}/{len(matches)}]  {match.a.kind.upper()}  "
               f"(similarity {match.score:.0%}) ──")
         print(f"  A: {a.label!r:<45} {a.iri}")
         print(f"     ({a.source.name})")

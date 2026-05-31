@@ -188,6 +188,20 @@ fi
 echo ""
 echo "Done.  Output written to: $OUTPUT"
 
+# ── reconcile cross-file entity IRIs (if multiple TTLs were merged) ──────────
+CV_RECONCILE=$(command -v cv-reconcile 2>/dev/null || true)
+if [[ -n "$CV_RECONCILE" && ${#TTL_FILES[@]} -gt 1 ]]; then
+    echo "Running cross-file entity reconciliation…"
+    "$CV_RECONCILE" "${TTL_FILES[@]}" --yes
+    echo "Done.  IRI reconciliation applied to source TTLs."
+elif [[ ${#TTL_FILES[@]} -le 1 ]]; then
+    true  # single file — no cross-file reconciliation needed
+else
+    echo "Note: cv-reconcile not found — skipping cross-file IRI reconciliation."
+    echo "Install with:  pip install \"resume-rdf[all]\""
+fi
+echo ""
+
 # ── generate markdown CV ──────────────────────────────────────────────────────
 CV_TO_MD=$(command -v cv-to-md 2>/dev/null || true)
 if [[ -n "$CV_TO_MD" ]]; then

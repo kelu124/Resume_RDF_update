@@ -44,6 +44,13 @@ SYSTEM_PROMPT: str = textwrap.dedent("""\
         cv:cvTitle "..." ;
         cv:lastUpdate "YYYY-MM-DD"^^xsd:date .
 
+    DATE PRECISION
+    Use the most specific date type available from the CV source:
+      "YYYY-MM-DD"^^xsd:date        when the exact day is known (e.g. certificate issue date)
+      "YYYY-MM"^^xsd:gYearMonth     when only year and month are given
+      "YYYY"^^xsd:gYear             when only the year is given (most common for job start/end)
+    Never fabricate day or month components. Prefer xsd:gYear for employment/project dates.
+
     WORK HISTORY
     Each position gets a cv:WorkHistory node linked from :cv via cv:hasWorkHistory.
 
@@ -57,9 +64,15 @@ SYSTEM_PROMPT: str = textwrap.dedent("""\
     :company_SLUG a cv:Company ;
         cv:Name "..." ;
         cv:URL <https://...> ;
+        cvx:companyLinkedInURL <https://www.linkedin.com/company/...> ;
         cv:Industry "..." ;
         cv:Locality "..." ;
         cv:Country "..." .
+
+    Populate cvx:companyLinkedInURL whenever the LinkedIn company page can be
+    inferred from the employer name (e.g. well-known organisations). This provides
+    a stable identifier that enables exact-match deduplication across CVs regardless
+    of how the employer name is phrased.
 
     PROJECTS
     Each project/engagement is a cvx:Project node linked from its cv:WorkHistory
@@ -115,7 +128,7 @@ SYSTEM_PROMPT: str = textwrap.dedent("""\
     Link from :cv via cvx:hasMOOC.
 
     AD-HOC TRAININGS
-    Short courses, workshops, bootcamps, professional certifications.
+    Short courses, workshops, and bootcamps that do NOT issue a formal credential.
     Each is a cvx:Training node linked from :cv via cvx:hasTraining.
 
     :training_SLUG a cvx:Training ;
@@ -123,9 +136,26 @@ SYSTEM_PROMPT: str = textwrap.dedent("""\
         cvx:trainingProvider  "..." ;
         cvx:trainingDate      "YYYY-MM-DD"^^xsd:date ;
         cvx:trainingDuration  "..." ;
-        cvx:certificationName "..." ;
         cvx:trainingTopics    "..." .
     Link from :cv via cvx:hasTraining.
+
+    PROFESSIONAL CERTIFICATIONS
+    Credentials issued by a certifying body (PMP, AWS, CISSP, ISO auditor, etc.).
+    Use cvx:Certification (a subclass of cvx:Training). Link from :cv via cvx:hasCertification.
+
+    :cert_SLUG a cvx:Certification ;
+        cvx:certificationName        "..." ;
+        cvx:certificationProvider    "..." ;
+        cvx:certificationDate        "YYYY-MM-DD"^^xsd:date ;
+        cvx:certificationID          "..." ;        # credential ID / licence number (if available)
+        cvx:certificationExpiry      "YYYY-MM-DD"^^xsd:date ;   # omit if no expiry
+        cvx:certificationPlatform    "Coursera / Credly / ..." ; # delivery platform if relevant
+        cvx:certificationDescription "What this certification demonstrates." .
+    Link from :cv via cvx:hasCertification.
+
+    DECISION RULE: use cvx:Certification when the item has an issuing body and
+    represents a formal credential (even if delivered via Coursera/edX). Use
+    cvx:Training for all other professional development items.
 
     PERSONAL PROJECTS
     Side projects, open-source work, community initiatives, hardware projects, etc.
