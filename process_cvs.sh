@@ -214,3 +214,14 @@ else
     echo "Note: cv-to-md not found — skipping Markdown export."
     echo "Install with:  pip install \"resume-rdf[all]\""
 fi
+
+# ── audit the consolidated CV ─────────────────────────────────────────────────
+CV_AUDIT=$(command -v cv-audit 2>/dev/null || true)
+if [[ -n "$CV_AUDIT" ]]; then
+    echo ""
+    echo "Auditing consolidated CV → $OUTPUT"
+    "$CV_AUDIT" "$OUTPUT"
+else
+    echo "Note: cv-audit not found — skipping audit."
+    echo "Install with:  pip install \"resume-rdf[all]\""
+fi
