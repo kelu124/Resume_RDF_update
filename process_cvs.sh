@@ -146,10 +146,11 @@ for cv_file in "${CV_FILES[@]}"; do
 
     echo "→ Parsing: $filename"
 
-    parse_args=("$cv_file" "--output" "$out_ttl")
+    _context="CV process output MUST BE in English."
     if [[ -n "$CONTEXT" ]]; then
-        parse_args+=("--context" "$CONTEXT")
+        _context="$_context $CONTEXT"
     fi
+    parse_args=("$cv_file" "--output" "$out_ttl" "--context" "$_context")
 
     if "$CV_TO_RDF" "${parse_args[@]}"; then
         if [[ -f "$out_ttl" && -s "$out_ttl" ]]; then
@@ -188,6 +189,20 @@ fi
 echo ""
 echo "Done.  Output written to: $OUTPUT"
 
+# ── reconcile cross-file entity IRIs (if multiple TTLs were merged) ──────────
+CV_RECONCILE=$(command -v cv-reconcile 2>/dev/null || true)
+if [[ -n "$CV_RECONCILE" && ${#TTL_FILES[@]} -gt 1 ]]; then
+    echo "Running cross-file entity reconciliation…"
+    "$CV_RECONCILE" "${TTL_FILES[@]}" --yes
+    echo "Done.  IRI reconciliation applied to source TTLs."
+elif [[ ${#TTL_FILES[@]} -le 1 ]]; then
+    true  # single file — no cross-file reconciliation needed
+else
+    echo "Note: cv-reconcile not found — skipping cross-file IRI reconciliation."
+    echo "Install with:  pip install \"resume-rdf[all]\""
+fi
+echo ""
+
 # ── generate markdown CV ──────────────────────────────────────────────────────
 CV_TO_MD=$(command -v cv-to-md 2>/dev/null || true)
 if [[ -n "$CV_TO_MD" ]]; then
@@ -197,5 +212,16 @@ if [[ -n "$CV_TO_MD" ]]; then
     echo "Done.  Markdown written to: $MD_OUTPUT"
 else
     echo "Note: cv-to-md not found — skipping Markdown export."
+    echo "Install with:  pip install \"resume-rdf[all]\""
+fi
+
+# ── audit the consolidated CV ─────────────────────────────────────────────────
+CV_AUDIT=$(command -v cv-audit 2>/dev/null || true)
+if [[ -n "$CV_AUDIT" ]]; then
+    echo ""
+    echo "Auditing consolidated CV → $OUTPUT"
+    "$CV_AUDIT" "$OUTPUT"
+else
+    echo "Note: cv-audit not found — skipping audit."
     echo "Install with:  pip install \"resume-rdf[all]\""
 fi

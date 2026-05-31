@@ -287,20 +287,43 @@ def _build_training(g: Graph, cv_iri) -> list[str]:
     if not cv_iri:
         return []
     items = []
+
+    for cert_iri in g.objects(cv_iri, _CVX.hasCertification):
+        name     = _get(g, cert_iri, _CVX.certificationName,        "")
+        provider = _get(g, cert_iri, _CVX.certificationProvider,    "")
+        platform = _get(g, cert_iri, _CVX.certificationPlatform,    "")
+        date_str = _get(g, cert_iri, _CVX.certificationDate,        "")
+        expiry   = _get(g, cert_iri, _CVX.certificationExpiry,      "")
+        cred_id  = _get(g, cert_iri, _CVX.certificationID,          "")
+        desc     = _get(g, cert_iri, _CVX.certificationDescription, "")
+        parts = [f"**{name or 'Certification'}**"]
+        issuer = " / ".join(filter(None, [provider, platform]))
+        if issuer:
+            parts.append(issuer)
+        if date_str:
+            parts.append(_fmt_date(date_str))
+        entry = " — ".join(parts)
+        extras = []
+        if expiry:
+            extras.append(f"expires {_fmt_date(expiry)}")
+        if cred_id:
+            extras.append(f"ID: {cred_id}")
+        if extras:
+            entry += f" *({', '.join(extras)})*"
+        items.append(f"- {entry}")
+        if desc:
+            items.append(f"  {desc}")
+
     for tr_iri in g.objects(cv_iri, _CVX.hasTraining):
         title    = _get(g, tr_iri, _CVX.trainingTitle,    "")
         provider = _get(g, tr_iri, _CVX.trainingProvider, "")
         date_str = _get(g, tr_iri, _CVX.trainingDate,     "")
-        cert     = _get(g, tr_iri, _CVX.certificationName,"")
         parts = [f"**{title or 'Training'}**"]
         if provider:
             parts.append(provider)
         if date_str:
             parts.append(_fmt_date(date_str))
-        entry = " — ".join(parts)
-        if cert and cert != title:
-            entry += f" *(cert: {cert})*"
-        items.append(f"- {entry}")
+        items.append(f"- {' — '.join(parts)}")
 
     for mooc_iri in g.objects(cv_iri, _CVX.hasMOOC):
         title    = _get(g, mooc_iri, _CVX.courseTitle,    "")
