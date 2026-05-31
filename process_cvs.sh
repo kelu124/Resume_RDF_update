@@ -187,3 +187,15 @@ fi
 
 echo ""
 echo "Done.  Output written to: $OUTPUT"
+
+# ── generate markdown CV ──────────────────────────────────────────────────────
+CV_TO_MD=$(command -v cv-to-md 2>/dev/null || true)
+if [[ -n "$CV_TO_MD" ]]; then
+    MD_OUTPUT="${OUTPUT%.ttl}.md"
+    echo "Generating Markdown CV → $MD_OUTPUT"
+    "$CV_TO_MD" "$OUTPUT" --output "$MD_OUTPUT"
+    echo "Done.  Markdown written to: $MD_OUTPUT"
+else
+    echo "Note: cv-to-md not found — skipping Markdown export."
+    echo "Install with:  pip install \"resume-rdf[all]\""
+fi

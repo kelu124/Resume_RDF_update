@@ -275,11 +275,11 @@ _CVX_CERT       = URIRef(f"{_CVX_STR}certificationName")
 _CVX_CERT_DATE  = URIRef(f"{_CVX_STR}certificationDate")
 _CVX_CERT_PROV  = URIRef(f"{_CVX_STR}certificationProvider")
 
-# MOOCs
+# MOOCs  (actual ontology predicates: cvx:courseTitle / courseProvider / completionDate)
 _CVX_MOOC       = URIRef(f"{_CVX_STR}MOOC")
-_CVX_MOOC_TTL   = URIRef(f"{_CVX_STR}moocTitle")
-_CVX_MOOC_PROV  = URIRef(f"{_CVX_STR}moocProvider")
-_CVX_MOOC_DT    = URIRef(f"{_CVX_STR}moocCompletionDate")
+_CVX_MOOC_TTL   = URIRef(f"{_CVX_STR}courseTitle")
+_CVX_MOOC_PROV  = URIRef(f"{_CVX_STR}courseProvider")
+_CVX_MOOC_DT    = URIRef(f"{_CVX_STR}completionDate")
 
 # Projects (within-graph)
 _CVX_PROJECT    = URIRef(f"{_CVX_STR}Project")
@@ -883,7 +883,10 @@ def dedup_training(
             prov_sim: float | None = None
             tier = ""
 
-            if title_sim >= threshold:
+            # Exact normalised match is always a duplicate regardless of threshold
+            if title_a == title_b:
+                tier = "exact"
+            elif title_sim >= threshold:
                 tier = "tier-1"
             elif title_sim >= soft_threshold:
                 if not prov_a or not prov_b:
@@ -938,23 +941,29 @@ def dedup_moocs(
     for i, node_a in enumerate(nodes):
         if node_a in merged_away:
             continue
-        key_a = " ".join([
-            _first_literal(g, node_a, _CVX_MOOC_PROV),
-            _first_literal(g, node_a, _CVX_MOOC_TTL),
-        ]).strip()
+        # Normalise both components so case/punctuation variants match
+        key_a = " ".join(filter(None, [
+            _normalise_text(_first_literal(g, node_a, _CVX_MOOC_PROV)),
+            _normalise_text(_first_literal(g, node_a, _CVX_MOOC_TTL)),
+        ]))
         for node_b in nodes[i + 1:]:
             if node_b in merged_away:
                 continue
-            key_b = " ".join([
-                _first_literal(g, node_b, _CVX_MOOC_PROV),
-                _first_literal(g, node_b, _CVX_MOOC_TTL),
-            ]).strip()
+            key_b = " ".join(filter(None, [
+                _normalise_text(_first_literal(g, node_b, _CVX_MOOC_PROV)),
+                _normalise_text(_first_literal(g, node_b, _CVX_MOOC_TTL)),
+            ]))
+            if not key_a or not key_b:
+                continue
+            # Exact normalised match is always a duplicate (no threshold needed)
             sim = _similarity(key_a, key_b)
-            if not key_a or not key_b or sim < threshold:
+            if key_a != key_b and sim < threshold:
                 continue
             winner, loser = _richest(g, node_a, node_b)
             if verbose:
-                print(f"[dedup:moocs]  MATCH  {key_a!r} ~ {key_b!r}  sim={sim:.2f}"
+                raw_a = _first_literal(g, node_a, _CVX_MOOC_TTL)
+                raw_b = _first_literal(g, node_b, _CVX_MOOC_TTL)
+                print(f"[dedup:moocs]  MATCH  {raw_a!r} ~ {raw_b!r}  sim={sim:.2f}"
                       f"  → keep <{winner}>  | drop <{loser}>")
             _absorb_node(g, winner, loser)
             merged_away.add(loser)
