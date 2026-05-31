@@ -272,6 +272,7 @@ def consolidate_ttls(
     strategy: TypingLiteral["longest", "concat", "llm"] = "longest",
     api_key: str | None = None,
     model: str = _MERGE_MODEL,
+    verbose: bool = False,
 ) -> MergeStats:
     """Merge *ttl_files* (same person, different framings) into *output_file*.
 
@@ -400,9 +401,9 @@ def consolidate_ttls(
             merged.add((s, p, _resolve_literals(p, literals, strategy, api_key, model, stats)))
 
     # ------------------------------------------------------------------
-    # Step 3b: deduplication
+    # Step 3b: within-graph deduplication
     # ------------------------------------------------------------------
-    dedup_stats = deduplicate_graph(merged)
+    dedup_stats = deduplicate_graph(merged, verbose=verbose)
     stats.dedup_removed = dedup_stats.total
 
     # ------------------------------------------------------------------
@@ -448,6 +449,10 @@ def main(argv: list[str] | None = None) -> None:
         "--model", default=_MERGE_MODEL, metavar="MODEL",
         help=f"Claude model for LLM synthesis (default: {_MERGE_MODEL})",
     )
+    parser.add_argument(
+        "--verbose", "-v", action="store_true",
+        help="Print a log line for every deduplication merge decision",
+    )
     args = parser.parse_args(argv)
 
     if len(args.files) < 2:
@@ -460,6 +465,7 @@ def main(argv: list[str] | None = None) -> None:
         strategy=args.strategy,
         api_key=args.api_key,
         model=args.model,
+        verbose=args.verbose,
     )
     print(f"Merged {stats.input_files} file(s)  ({stats.input_triples} input triples)")
     print(f"  Strategy             : {args.strategy}")

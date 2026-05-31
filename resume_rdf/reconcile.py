@@ -520,7 +520,9 @@ def _date_overlap_score(start_a: str, end_a: str, start_b: str, end_b: str) -> f
 
 # ── Project composite score ───────────────────────────────────────────────────
 
-def _project_composite_score(g: Graph, node_a: URIRef, node_b: URIRef) -> float:
+def _project_composite_score(
+    g: Graph, node_a: URIRef, node_b: URIRef
+) -> tuple[float, dict[str, float | None]]:
     """Return a weighted composite similarity score for two project nodes.
 
     The score combines four signals:
@@ -535,6 +537,12 @@ def _project_composite_score(g: Graph, node_a: URIRef, node_b: URIRef) -> float:
 
     Each signal is included only when the required fields are available, and the
     final score is normalised by the total weight of applied signals.
+
+    Returns
+    -------
+    tuple of (composite_score, detail_dict) where detail_dict contains
+    "name", "client", "dates", "capex" as individual scores (``None`` when
+    the signal was not applied).
     """
     name_a   = _normalise_text(_first_literal(g, node_a, _CVX_PROJ_NAME))
     name_b   = _normalise_text(_first_literal(g, node_b, _CVX_PROJ_NAME))
@@ -551,20 +559,26 @@ def _project_composite_score(g: Graph, node_a: URIRef, node_b: URIRef) -> float:
 
     score  = 0.0
     weight = 0.0
+    name_sig:   float | None = None
+    client_sig: float | None = None
+    dates_sig:  float | None = None
+    capex_sig:  float | None = None
 
     # Name (always included)
-    name_sim = _similarity(name_a, name_b) if name_a and name_b else 0.0
-    score  += 0.40 * name_sim
+    name_sig = _similarity(name_a, name_b) if name_a and name_b else 0.0
+    score  += 0.40 * name_sig
     weight += 0.40
 
     # Client
     if client_a and client_b:
-        score  += 0.30 * _similarity(client_a, client_b)
+        client_sig = _similarity(client_a, client_b)
+        score  += 0.30 * client_sig
         weight += 0.30
 
     # Date overlap
     if any([start_a, end_a, start_b, end_b]):
-        score  += 0.20 * _date_overlap_score(start_a, end_a, start_b, end_b)
+        dates_sig = _date_overlap_score(start_a, end_a, start_b, end_b)
+        score  += 0.20 * dates_sig
         weight += 0.20
 
     # Budget / CAPEX
@@ -572,10 +586,18 @@ def _project_composite_score(g: Graph, node_a: URIRef, node_b: URIRef) -> float:
     amt_b = _extract_amount(budget_b) if budget_b else None
     if amt_a is not None and amt_b is not None and max(amt_a, amt_b) > 0:
         ratio = min(amt_a, amt_b) / max(amt_a, amt_b)
-        score  += 0.10 * (1.0 if ratio >= 0.80 else 0.0)
+        capex_sig = 1.0 if ratio >= 0.80 else 0.0
+        score  += 0.10 * capex_sig
         weight += 0.10
 
-    return score / weight if weight > 0 else 0.0
+    composite = score / weight if weight > 0 else 0.0
+    detail: dict[str, float | None] = {
+        "name":   name_sig,
+        "client": client_sig,
+        "dates":  dates_sig,
+        "capex":  capex_sig,
+    }
+    return composite, detail
 
 
 # ── Union merge for projects (multi-valued fields get union, not winner-only) ─
@@ -617,7 +639,11 @@ def _union_absorb_node(g: Graph, winner: URIRef, loser: URIRef) -> None:
 
 # ── Section-specific dedup functions ─────────────────────────────────────────
 
-def dedup_skills(g: Graph, threshold: float = DEFAULT_THRESHOLDS["skills"]) -> int:
+def dedup_skills(
+    g: Graph,
+    threshold: float = DEFAULT_THRESHOLDS["skills"],
+    verbose: bool = False,
+) -> int:
     """Deduplicate skill nodes within *g*; return count removed.
 
     Duplicate detection: normalised ``cv:skillName`` string similarity >= *threshold*.
@@ -633,6 +659,7 @@ def dedup_skills(g: Graph, threshold: float = DEFAULT_THRESHOLDS["skills"]) -> i
     Args:
         g: In-place rdflib Graph to deduplicate.
         threshold: Similarity threshold on normalised names (default 0.75).
+        verbose: If ``True``, print a log line for every merge decision.
 
     Returns:
         Number of duplicate skill nodes removed.
@@ -650,7 +677,8 @@ def dedup_skills(g: Graph, threshold: float = DEFAULT_THRESHOLDS["skills"]) -> i
                 continue
             raw_b  = _first_literal(g, node_b, _SKILL_NAME)
             norm_b = _normalise_text(raw_b)
-            if not norm_a or not norm_b or _similarity(norm_a, norm_b) < threshold:
+            sim = _similarity(norm_a, norm_b)
+            if not norm_a or not norm_b or sim < threshold:
                 continue
             rank_a = _SKILL_LEVEL_RANK.get(_first_literal(g, node_a, _SKILL_LVL).lower(), 0)
             rank_b = _SKILL_LEVEL_RANK.get(_first_literal(g, node_b, _SKILL_LVL).lower(), 0)
@@ -662,6 +690,13 @@ def dedup_skills(g: Graph, threshold: float = DEFAULT_THRESHOLDS["skills"]) -> i
                 or (rank_a == rank_b and yrs_a == yrs_b and len(raw_a) >= len(raw_b))
             )
             winner, loser = (node_a, node_b) if a_wins else (node_b, node_a)
+            if verbose:
+                w_lvl = _first_literal(g, winner, _SKILL_LVL)
+                w_yrs = _first_int(g, winner, _SKILL_YRS)
+                raw_w = raw_a if winner == node_a else raw_b
+                detail = ", ".join(filter(None, [w_lvl or "", f"{w_yrs}yr" if w_yrs else ""]))
+                print(f"[dedup:skills]   MATCH  {raw_a!r} ~ {raw_b!r}  sim={sim:.2f}"
+                      f"  → keep {raw_w!r} ({detail})  | drop <{loser}>")
             _absorb_node(g, winner, loser)
             merged_away.add(loser)
             removed += 1
@@ -669,7 +704,9 @@ def dedup_skills(g: Graph, threshold: float = DEFAULT_THRESHOLDS["skills"]) -> i
 
 
 def dedup_publications(
-    g: Graph, threshold: float = DEFAULT_THRESHOLDS["publications"]
+    g: Graph,
+    threshold: float = DEFAULT_THRESHOLDS["publications"],
+    verbose: bool = False,
 ) -> int:
     """Deduplicate publication nodes within *g*; return count removed.
 
@@ -679,6 +716,7 @@ def dedup_publications(
     Args:
         g: In-place rdflib Graph to deduplicate.
         threshold: Title similarity threshold (default 0.88).
+        verbose: If ``True``, print a log line for every merge decision.
 
     Returns:
         Number of duplicate publication nodes removed.
@@ -702,17 +740,26 @@ def dedup_publications(
             doi_b   = _first_literal(g, node_b, _BIBO_DOI).lower()
             title_b = _first_literal(g, node_b, _DCT_TITLE)
             doi_match   = bool(doi_a and doi_b and doi_a == doi_b)
-            title_match = bool(title_a and title_b and _similarity(title_a, title_b) >= threshold)
+            title_sim   = _similarity(title_a, title_b) if title_a and title_b else 0.0
+            title_match = title_sim >= threshold
             if not (doi_match or title_match):
                 continue
             winner, loser = _richest(g, node_a, node_b)
+            if verbose:
+                how = "doi=exact" if doi_match else f"title_sim={title_sim:.2f}"
+                print(f"[dedup:publications]  MATCH  {title_a!r} ~ {title_b!r}  {how}"
+                      f"  → keep <{winner}>  | drop <{loser}>")
             _absorb_node(g, winner, loser)
             merged_away.add(loser)
             removed += 1
     return removed
 
 
-def dedup_education(g: Graph, threshold: float = DEFAULT_THRESHOLDS["education"]) -> int:
+def dedup_education(
+    g: Graph,
+    threshold: float = DEFAULT_THRESHOLDS["education"],
+    verbose: bool = False,
+) -> int:
     """Deduplicate education nodes within *g*; return count removed.
 
     Duplicate detection: similarity of the composite key
@@ -722,6 +769,7 @@ def dedup_education(g: Graph, threshold: float = DEFAULT_THRESHOLDS["education"]
     Args:
         g: In-place rdflib Graph to deduplicate.
         threshold: Key similarity threshold (default 0.85).
+        verbose: If ``True``, print a log line for every merge decision.
 
     Returns:
         Number of duplicate education nodes removed.
@@ -747,16 +795,24 @@ def dedup_education(g: Graph, threshold: float = DEFAULT_THRESHOLDS["education"]
                 _first_literal(g, node_b, _CV_MAJOR),
                 _first_str(g, node_b, _CV_INST),
             ]).strip()
-            if not key_a or not key_b or _similarity(key_a, key_b) < threshold:
+            sim = _similarity(key_a, key_b)
+            if not key_a or not key_b or sim < threshold:
                 continue
             winner, loser = _richest(g, node_a, node_b)
+            if verbose:
+                print(f"[dedup:education]  MATCH  {key_a!r} ~ {key_b!r}  sim={sim:.2f}"
+                      f"  → keep <{winner}>  | drop <{loser}>")
             _absorb_node(g, winner, loser)
             merged_away.add(loser)
             removed += 1
     return removed
 
 
-def dedup_training(g: Graph, threshold: float = DEFAULT_THRESHOLDS["training"]) -> int:
+def dedup_training(
+    g: Graph,
+    threshold: float = DEFAULT_THRESHOLDS["training"],
+    verbose: bool = False,
+) -> int:
     """Deduplicate training and certification nodes within *g*; return count removed.
 
     Matching strategy (title-primary, provider/date secondary):
@@ -777,6 +833,7 @@ def dedup_training(g: Graph, threshold: float = DEFAULT_THRESHOLDS["training"]) 
     Args:
         g: In-place rdflib Graph to deduplicate.
         threshold: Primary title similarity threshold (default 0.80).
+        verbose: If ``True``, print a log line for every merge decision.
 
     Returns:
         Number of duplicate training/certification nodes removed.
@@ -823,25 +880,37 @@ def dedup_training(g: Graph, threshold: float = DEFAULT_THRESHOLDS["training"]) 
                 continue
 
             title_sim = _similarity(title_a, title_b)
+            prov_sim: float | None = None
+            tier = ""
 
             if title_sim >= threshold:
-                # Strong title match — always a duplicate
-                pass
+                tier = "tier-1"
             elif title_sim >= soft_threshold:
-                # Weaker title match — require provider confirmation
-                if not prov_a or not prov_b or _similarity(prov_a, prov_b) < 0.70:
+                if not prov_a or not prov_b:
                     continue
+                prov_sim = _similarity(prov_a, prov_b)
+                if prov_sim < 0.70:
+                    continue
+                tier = f"tier-2, prov={prov_sim:.2f}"
             else:
                 continue
 
             winner, loser = _richest(g, node_a, node_b)
+            if verbose:
+                print(f"[dedup:training]  MATCH  title_sim={title_sim:.2f} [{tier}]"
+                      f"  {raw_title_a!r} ~ {raw_title_b!r}"
+                      f"  → keep <{winner}>  | drop <{loser}>")
             _absorb_node(g, winner, loser)
             merged_away.add(loser)
             removed += 1
     return removed
 
 
-def dedup_moocs(g: Graph, threshold: float = DEFAULT_THRESHOLDS["moocs"]) -> int:
+def dedup_moocs(
+    g: Graph,
+    threshold: float = DEFAULT_THRESHOLDS["moocs"],
+    verbose: bool = False,
+) -> int:
     """Deduplicate MOOC nodes within *g*; return count removed.
 
     Duplicate detection: similarity of ``(provider, title)`` key >= *threshold*.
@@ -850,6 +919,7 @@ def dedup_moocs(g: Graph, threshold: float = DEFAULT_THRESHOLDS["moocs"]) -> int
     Args:
         g: In-place rdflib Graph to deduplicate.
         threshold: Key similarity threshold (default 0.88).
+        verbose: If ``True``, print a log line for every merge decision.
 
     Returns:
         Number of duplicate MOOC nodes removed.
@@ -879,16 +949,24 @@ def dedup_moocs(g: Graph, threshold: float = DEFAULT_THRESHOLDS["moocs"]) -> int
                 _first_literal(g, node_b, _CVX_MOOC_PROV),
                 _first_literal(g, node_b, _CVX_MOOC_TTL),
             ]).strip()
-            if not key_a or not key_b or _similarity(key_a, key_b) < threshold:
+            sim = _similarity(key_a, key_b)
+            if not key_a or not key_b or sim < threshold:
                 continue
             winner, loser = _richest(g, node_a, node_b)
+            if verbose:
+                print(f"[dedup:moocs]  MATCH  {key_a!r} ~ {key_b!r}  sim={sim:.2f}"
+                      f"  → keep <{winner}>  | drop <{loser}>")
             _absorb_node(g, winner, loser)
             merged_away.add(loser)
             removed += 1
     return removed
 
 
-def dedup_projects(g: Graph, threshold: float = DEFAULT_THRESHOLDS["projects"]) -> int:
+def dedup_projects(
+    g: Graph,
+    threshold: float = DEFAULT_THRESHOLDS["projects"],
+    verbose: bool = False,
+) -> int:
     """Deduplicate project nodes within a *single* graph using multi-field composite scoring.
 
     Intended for within-graph duplicates only (e.g. two sections of the same
@@ -917,6 +995,7 @@ def dedup_projects(g: Graph, threshold: float = DEFAULT_THRESHOLDS["projects"]) 
     Args:
         g: In-place rdflib Graph to deduplicate.
         threshold: Composite score threshold (default 0.65).
+        verbose: If ``True``, print a log line for every merge decision.
 
     Returns:
         Number of duplicate project nodes removed.
@@ -936,16 +1015,34 @@ def dedup_projects(g: Graph, threshold: float = DEFAULT_THRESHOLDS["projects"]) 
         for node_b in nodes[i + 1:]:
             if node_b in merged_away:
                 continue
-            if _project_composite_score(g, node_a, node_b) < threshold:
+            composite, detail = _project_composite_score(g, node_a, node_b)
+            if composite < threshold:
                 continue
             winner, loser = _richest(g, node_a, node_b)
+            if verbose:
+                def _fs(v: float | None) -> str:
+                    return f"{v:.2f}" if v is not None else "—"
+                name_a_str = _first_literal(g, node_a, _CVX_PROJ_NAME)
+                name_b_str = _first_literal(g, node_b, _CVX_PROJ_NAME)
+                breakdown = (
+                    f"name={_fs(detail['name'])} client={_fs(detail['client'])}"
+                    f" dates={_fs(detail['dates'])} capex={_fs(detail['capex'])}"
+                )
+                w_triples  = _triple_count(g, winner)
+                print(f"[dedup:projects]  MATCH  composite={composite:.2f} [{breakdown}]"
+                      f"  {name_a_str!r} ~ {name_b_str!r}"
+                      f"  → union-merge <{winner}> ({w_triples} triples)  | drop <{loser}>")
             _union_absorb_node(g, winner, loser)
             merged_away.add(loser)
             removed += 1
     return removed
 
 
-def dedup_companies(g: Graph, threshold: float = DEFAULT_THRESHOLDS["companies"]) -> int:
+def dedup_companies(
+    g: Graph,
+    threshold: float = DEFAULT_THRESHOLDS["companies"],
+    verbose: bool = False,
+) -> int:
     """Deduplicate company/employer nodes within a *single* graph.
 
     Duplicate detection: ``cv:Name`` similarity >= *threshold*.
@@ -954,6 +1051,7 @@ def dedup_companies(g: Graph, threshold: float = DEFAULT_THRESHOLDS["companies"]
     Args:
         g: In-place rdflib Graph to deduplicate.
         threshold: Name similarity threshold (default 0.85).
+        verbose: If ``True``, print a log line for every merge decision.
 
     Returns:
         Number of duplicate company nodes removed.
@@ -975,9 +1073,13 @@ def dedup_companies(g: Graph, threshold: float = DEFAULT_THRESHOLDS["companies"]
             if node_b in merged_away:
                 continue
             name_b = _first_literal(g, node_b, _CV_COMP_NAME)
-            if not name_a or not name_b or _similarity(name_a, name_b) < threshold:
+            sim = _similarity(name_a, name_b)
+            if not name_a or not name_b or sim < threshold:
                 continue
             winner, loser = _richest(g, node_a, node_b)
+            if verbose:
+                print(f"[dedup:companies]  MATCH  {name_a!r} ~ {name_b!r}  sim={sim:.2f}"
+                      f"  → keep <{winner}>  | drop <{loser}>")
             _absorb_node(g, winner, loser)
             merged_away.add(loser)
             removed += 1
@@ -987,6 +1089,7 @@ def dedup_companies(g: Graph, threshold: float = DEFAULT_THRESHOLDS["companies"]
 def deduplicate_graph(
     g: Graph,
     thresholds: dict[str, float] | None = None,
+    verbose: bool = False,
 ) -> DeduplicationStats:
     """Run all section-aware deduplication passes on *g* in-place.
 
@@ -1001,18 +1104,18 @@ def deduplicate_graph(
     | Section          | Match key                                | Default  |
     |                  |                                          | threshold|
     +==================+==========================================+==========+
-    | Skills           | ``cv:skillName`` fuzzy match             | 0.82     |
+    | Skills           | ``cv:skillName`` fuzzy match             | 0.75     |
     +------------------+------------------------------------------+----------+
     | Publications     | ``bibo:doi`` exact or ``dcterms:title``  | 0.88     |
     |                  | fuzzy match                              |          |
     +------------------+------------------------------------------+----------+
     | Education        | (degreeType, eduMajor, studiedIn) key    | 0.85     |
     +------------------+------------------------------------------+----------+
-    | Training / certs | (provider, title, date) key              | 0.90     |
+    | Training / certs | title-primary, provider secondary        | 0.80     |
     +------------------+------------------------------------------+----------+
     | MOOCs            | (provider, title) key                    | 0.88     |
     +------------------+------------------------------------------+----------+
-    | Projects         | ``cvx:projectName`` fuzzy match          | 0.80     |
+    | Projects         | composite: name+client+dates+budget      | 0.65     |
     +------------------+------------------------------------------+----------+
     | Companies        | ``cv:Name`` fuzzy match                  | 0.85     |
     +------------------+------------------------------------------+----------+
@@ -1023,6 +1126,8 @@ def deduplicate_graph(
             Keys match the section names in :data:`DEFAULT_THRESHOLDS`
             (``"skills"``, ``"publications"``, etc.).  Only the keys you
             provide are overridden; others keep their defaults.
+        verbose: If ``True``, print a structured log line for every merge
+            decision and a summary at the end.
 
     Returns:
         :class:`DeduplicationStats` with per-section counts of removed nodes.
@@ -1034,19 +1139,32 @@ def deduplicate_graph(
 
         g = Graph()
         g.parse("merged.ttl", format="turtle")
-        stats = deduplicate_graph(g, thresholds={"skills": 0.85})
+        stats = deduplicate_graph(g, thresholds={"skills": 0.85}, verbose=True)
         print(f"Removed {stats.total} duplicate nodes")
     """
     t = {**DEFAULT_THRESHOLDS, **(thresholds or {})}
-    return DeduplicationStats(
-        companies    = dedup_companies(g,    threshold=t["companies"]),
-        projects     = dedup_projects(g,     threshold=t["projects"]),
-        skills       = dedup_skills(g,       threshold=t["skills"]),
-        publications = dedup_publications(g, threshold=t["publications"]),
-        education    = dedup_education(g,    threshold=t["education"]),
-        training     = dedup_training(g,     threshold=t["training"]),
-        moocs        = dedup_moocs(g,        threshold=t["moocs"]),
+    stats = DeduplicationStats(
+        companies    = dedup_companies(g,    threshold=t["companies"],    verbose=verbose),
+        projects     = dedup_projects(g,     threshold=t["projects"],     verbose=verbose),
+        skills       = dedup_skills(g,       threshold=t["skills"],       verbose=verbose),
+        publications = dedup_publications(g, threshold=t["publications"], verbose=verbose),
+        education    = dedup_education(g,    threshold=t["education"],    verbose=verbose),
+        training     = dedup_training(g,     threshold=t["training"],     verbose=verbose),
+        moocs        = dedup_moocs(g,        threshold=t["moocs"],        verbose=verbose),
     )
+    if verbose:
+        print(
+            f"[dedup] SUMMARY"
+            f"  skills:{stats.skills}"
+            f"  publications:{stats.publications}"
+            f"  education:{stats.education}"
+            f"  training:{stats.training}"
+            f"  moocs:{stats.moocs}"
+            f"  projects:{stats.projects}"
+            f"  companies:{stats.companies}"
+            f"  total:{stats.total}"
+        )
+    return stats
 
 
 def reconcile_interactive(
