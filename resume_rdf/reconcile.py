@@ -1495,7 +1495,10 @@ def reconcile_interactive(
         print(f"     ({b.source.name})")
         print(f"  Canonical if merged → A  ({canon_a})")
 
-        if auto_yes:
+        if match.score >= 0.95:
+            answer = "y"
+            print("  [auto-merge: score ≥ 95%]")
+        elif auto_yes:
             answer = "y"
             print("  [auto-yes]")
         else:
