@@ -460,6 +460,7 @@ Options:
 | `--strategy` | `longest` | `longest` \| `concat` \| `llm` — see below |
 | `--threshold` | `0.70` | Similarity threshold for entity reconciliation |
 | `--output FILE` | — | Output path (required) |
+| `--master FILE` | first file listed | Treat this file's IRIs as canonical during reconciliation |
 | `--api-key KEY` | `$ANTHROPIC_API_KEY` | Required for `--strategy llm` |
 | `--model MODEL` | `claude-haiku-4-5-20251001` | Claude model for LLM synthesis |
 
@@ -482,6 +483,12 @@ stats = consolidate_ttls(
     ["sam_v1.ttl", "sam_v2.ttl"], "sam_llm.ttl",
     strategy="llm",
     api_key="sk-ant-...",          # or set ANTHROPIC_API_KEY
+)
+
+# Pin a master file — its IRIs are kept as canonical during reconciliation
+stats = consolidate_ttls(
+    ["sam_v1.ttl", "sam_v2.ttl"], "sam_merged.ttl",
+    master_file="sam_v1.ttl",
 )
 
 print(stats.input_triples)      # total triples across all input files
@@ -569,9 +576,14 @@ Options:
 | `--threshold 0.80` | Raise bar to reduce false positives (default: `0.75`) |
 | `--dry-run` / `-n` | Show matches without writing any files |
 | `--yes` / `-y`     | Accept all matches above threshold automatically |
+| `--master FILE`    | Treat this file's IRIs as canonical (default: first file listed) |
 
-The IRI from the **first file listed** is kept as canonical.  Re-order the
-arguments to choose which IRI wins.
+By default, the IRI from the **first file listed** is kept as canonical.
+Use `--master` to pin a specific file regardless of argument order:
+
+```bash
+cv-reconcile alice.ttl bob.ttl carol.ttl --master alice.ttl
+```
 
 ### Python API
 
@@ -599,6 +611,13 @@ n = reconcile_interactive(
     [Path("alice.ttl"), Path("bob.ttl")],
     threshold=0.90,   # high threshold → only near-identical matches
     auto_yes=True,
+)
+
+# Pin a master file — its IRIs are always kept as canonical
+n = reconcile_interactive(
+    [Path("alice.ttl"), Path("bob.ttl")],
+    auto_yes=True,
+    master_file=Path("alice.ttl"),
 )
 ```
 
