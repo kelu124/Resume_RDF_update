@@ -144,6 +144,13 @@ for cv_file in "${CV_FILES[@]}"; do
     filename=$(basename "$cv_file")
     out_ttl="${cv_file}.ttl"
 
+    if [[ -f "$out_ttl" && -s "$out_ttl" ]]; then
+        echo "→ Skipping: $filename  (TTL already exists)"
+        TTL_FILES+=("$out_ttl")
+        echo ""
+        continue
+    fi
+
     echo "→ Parsing: $filename"
 
     _context="CV process output MUST BE in English."
