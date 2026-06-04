@@ -273,6 +273,7 @@ def consolidate_ttls(
     api_key: str | None = None,
     model: str = _MERGE_MODEL,
     verbose: bool = False,
+    master_file: str | Path | None = None,
 ) -> MergeStats:
     """Merge *ttl_files* (same person, different framings) into *output_file*.
 
@@ -304,6 +305,11 @@ def consolidate_ttls(
     model:
         Claude model to use for LLM synthesis
         (default: ``claude-haiku-4-5-20251001``).
+    master_file:
+        When set, this file's IRIs are treated as canonical during
+        cross-file reconciliation.  Entities from other files are remapped
+        to the master file's IRIs when a match is found.  Defaults to
+        ``None`` (first-listed file wins by position).
 
     Returns
     -------
@@ -313,6 +319,7 @@ def consolidate_ttls(
     """
     ttl_files = [Path(f) for f in ttl_files]
     output_file = Path(output_file)
+    master_resolved = Path(master_file).resolve() if master_file is not None else None
     stats = MergeStats(
         input_files=len(ttl_files),
         input_triples=0,
@@ -329,6 +336,14 @@ def consolidate_ttls(
         for src, dst in zip(ttl_files, tmp_paths):
             shutil.copy(src, dst)
 
+        # Map original resolved path → tmp path for master detection
+        master_tmp: Path | None = None
+        if master_resolved is not None:
+            for orig, tmp_p in zip(ttl_files, tmp_paths):
+                if orig.resolve() == master_resolved:
+                    master_tmp = tmp_p
+                    break
+
         entities = load_entities(tmp_paths)
         matches = find_matches(entities, threshold=threshold)
 
@@ -338,16 +353,22 @@ def consolidate_ttls(
             canon_b = mapping.get(m.b.iri, m.b.iri)
             if canon_a == canon_b:
                 continue
-            idx_a = next(
-                (i for i, p in enumerate(tmp_paths) if p == m.a.source), 999
-            )
-            idx_b = next(
-                (i for i, p in enumerate(tmp_paths) if p == m.b.source), 999
-            )
-            if idx_a <= idx_b:
-                mapping[canon_b] = canon_a
-            else:
+            # Master file's IRI wins; otherwise earlier-listed file wins
+            b_is_master = master_tmp is not None and m.b.source == master_tmp
+            a_is_master = master_tmp is not None and m.a.source == master_tmp
+            if b_is_master and not a_is_master:
                 mapping[canon_a] = canon_b
+            else:
+                idx_a = next(
+                    (i for i, p in enumerate(tmp_paths) if p == m.a.source), 999
+                )
+                idx_b = next(
+                    (i for i, p in enumerate(tmp_paths) if p == m.b.source), 999
+                )
+                if idx_a <= idx_b:
+                    mapping[canon_b] = canon_a
+                else:
+                    mapping[canon_a] = canon_b
 
         if mapping:
             apply_mapping(tmp_paths, mapping)
@@ -453,6 +474,14 @@ def main(argv: list[str] | None = None) -> None:
         "--verbose", "-v", action="store_true",
         help="Print a log line for every deduplication merge decision",
     )
+    parser.add_argument(
+        "--master", metavar="FILE.ttl",
+        help=(
+            "Treat this file's IRIs as canonical during reconciliation. "
+            "Matched entities from other files are remapped to the master "
+            "file's IRIs. Defaults to the first file listed."
+        ),
+    )
     args = parser.parse_args(argv)
 
     if len(args.files) < 2:
@@ -466,6 +495,7 @@ def main(argv: list[str] | None = None) -> None:
         api_key=args.api_key,
         model=args.model,
         verbose=args.verbose,
+        master_file=args.master,
     )
     print(f"Merged {stats.input_files} file(s)  ({stats.input_triples} input triples)")
     print(f"  Strategy             : {args.strategy}")

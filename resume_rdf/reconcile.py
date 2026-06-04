@@ -1423,6 +1423,7 @@ def reconcile_interactive(
     threshold: float = 0.75,
     dry_run: bool = False,
     auto_yes: bool = False,
+    master_file: Path | None = None,
 ) -> int:
     """Run interactive entity reconciliation across a set of Turtle files.
 
@@ -1430,19 +1431,22 @@ def reconcile_interactive(
     collects a yes/no/quit response.  Confirmed merges are accumulated into a
     mapping, then applied to all files in one pass at the end.
 
-    The IRI from the **first file listed** (by argument order) is kept as the
-    canonical IRI; the other is replaced everywhere.  Re-order the file
-    arguments to control which IRI wins.
+    By default, the IRI from the **first file listed** (by argument order) is
+    kept as the canonical IRI.  When *master_file* is provided, that file's
+    IRIs always win regardless of position.
 
     Args:
-        ttl_files:  Ordered list of Turtle file paths to reconcile.
-        threshold:  Minimum similarity score (``0``–``1``) to surface a pair.
-                    Defaults to ``0.75``.
-        dry_run:    If ``True``, report what would be done but don't write any
-                    files.  Defaults to ``False``.
-        auto_yes:   If ``True``, confirm all matches above *threshold*
-                    automatically (non-interactive batch mode).
-                    Defaults to ``False``.
+        ttl_files:    Ordered list of Turtle file paths to reconcile.
+        threshold:    Minimum similarity score (``0``–``1``) to surface a pair.
+                      Defaults to ``0.75``.
+        dry_run:      If ``True``, report what would be done but don't write
+                      any files.  Defaults to ``False``.
+        auto_yes:     If ``True``, confirm all matches above *threshold*
+                      automatically (non-interactive batch mode).
+                      Defaults to ``False``.
+        master_file:  When set, this file's IRIs are treated as canonical.
+                      Any matched entity in another file is remapped to the
+                      master file's IRI.  Defaults to ``None``.
 
     Returns:
         Number of merges confirmed (and applied, unless *dry_run* is set).
@@ -1460,6 +1464,8 @@ def reconcile_interactive(
     if not ttl_files:
         print("No TTL files provided.")
         return 0
+
+    master_resolved = master_file.resolve() if master_file is not None else None
 
     print(f"Loading {len(ttl_files)} file(s)…")
     entities = load_entities(ttl_files)
@@ -1487,13 +1493,23 @@ def reconcile_interactive(
         if canon_a == canon_b:
             continue  # already unified by a prior merge
 
+        # Determine which IRI is canonical: master file wins; otherwise A (earlier-listed) wins
+        master_is_b = (
+            master_resolved is not None
+            and b.source.resolve() == master_resolved
+        )
+        if master_is_b:
+            canonical_iri, other_iri, canonical_label = canon_b, canon_a, "B"
+        else:
+            canonical_iri, other_iri, canonical_label = canon_a, canon_b, "A"
+
         print(f"── [{idx}/{len(matches)}]  {match.a.kind.upper()}  "
               f"(similarity {match.score:.0%}) ──")
         print(f"  A: {a.label!r:<45} {a.iri}")
         print(f"     ({a.source.name})")
         print(f"  B: {b.label!r:<45} {b.iri}")
         print(f"     ({b.source.name})")
-        print(f"  Canonical if merged → A  ({canon_a})")
+        print(f"  Canonical if merged → {canonical_label}  ({canonical_iri})")
 
         if match.score >= 0.95:
             answer = "y"
@@ -1512,9 +1528,9 @@ def reconcile_interactive(
             break
 
         if answer == "y":
-            mapping[canon_b] = canon_a
+            mapping[other_iri] = canonical_iri
             confirmed += 1
-            print(f"  ✓ Will rewrite  {canon_b}  →  {canon_a}")
+            print(f"  ✓ Will rewrite  {other_iri}  →  {canonical_iri}")
         print()
 
     if confirmed == 0:
@@ -1561,11 +1577,13 @@ def main(argv: list[str] | None = None) -> None:
               cv-reconcile *.ttl --threshold 0.80
               cv-reconcile alice.ttl bob.ttl --dry-run
               cv-reconcile alice.ttl bob.ttl --yes
+              cv-reconcile alice.ttl bob.ttl --master alice.ttl
 
             Notes
             -----
-            The IRI from the first file listed is kept as canonical when two
-            entities are merged.  Re-order the arguments to choose which IRI wins.
+            By default, the IRI from the first file listed is kept as canonical
+            when two entities are merged.  Use --master to designate a specific
+            file whose IRIs are always preserved regardless of argument order.
 
             Requires rdflib:  pip install rdflib
         """),
@@ -1593,6 +1611,15 @@ def main(argv: list[str] | None = None) -> None:
         action="store_true",
         help="Accept all matches above threshold automatically.",
     )
+    parser.add_argument(
+        "--master",
+        metavar="FILE.ttl",
+        help=(
+            "Treat this file's IRIs as canonical. When a match is confirmed, "
+            "the other file's IRI is remapped to the master file's IRI. "
+            "Defaults to the first file listed."
+        ),
+    )
 
     args = parser.parse_args(argv)
     paths = [Path(p) for p in args.ttl_files]
@@ -1607,11 +1634,19 @@ def main(argv: list[str] | None = None) -> None:
         print("Error: provide at least two TTL files to compare.", file=sys.stderr)
         sys.exit(1)
 
+    master_path: Path | None = None
+    if args.master:
+        master_path = Path(args.master)
+        if not master_path.exists():
+            print(f"Error: --master file not found: {master_path}", file=sys.stderr)
+            sys.exit(1)
+
     reconcile_interactive(
         paths,
         threshold=args.threshold,
         dry_run=args.dry_run,
         auto_yes=args.yes,
+        master_file=master_path,
     )
 
 
