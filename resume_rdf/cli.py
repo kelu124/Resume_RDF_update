@@ -89,6 +89,10 @@ def main(argv: list[str] | None = None) -> None:
         "--quiet", "-q", action="store_true",
         help="Suppress progress output.",
     )
+    parser.add_argument(
+        "--overwrite", action="store_true",
+        help="Overwrite the output file if it already exists (default: skip).",
+    )
     args = parser.parse_args(argv)
     verbose = not args.quiet
 
@@ -109,6 +113,11 @@ def main(argv: list[str] | None = None) -> None:
         )
 
     out_path = args.output or (os.path.splitext(os.path.basename(args.cv_file))[0] + ".ttl")
+
+    if os.path.isfile(out_path) and not args.overwrite:
+        if verbose:
+            print(f"Skipping: {out_path} already exists (use --overwrite to replace).")
+        sys.exit(0)
 
     if verbose:
         print(f"Input : {args.cv_file}")

@@ -38,7 +38,7 @@ Requires Python ≥ 3.10.  The `[all]` extra installs every optional dependency
 
 ```
 cv-to-rdf <FILE> [--output OUT.ttl] [--context TEXT] [--model MODEL]
-          [--api-key KEY] [--max-tokens N] [--validate] [--quiet]
+          [--api-key KEY] [--max-tokens N] [--validate] [--quiet] [--overwrite]
 ```
 
 | Param | Default | Notes |
@@ -49,6 +49,7 @@ cv-to-rdf <FILE> [--output OUT.ttl] [--context TEXT] [--model MODEL]
 | `--model` | `claude-sonnet-4-6` | Any Anthropic model |
 | `--max-tokens` | 16000 | Increase for very long CVs |
 | `--validate` | off | Parse output with rdflib and exit non-zero if invalid |
+| `--overwrite` | off | Overwrite output file if it already exists (default: skip and exit 0) |
 
 **Output:** A `.ttl` file containing a self-contained Turtle RDF graph.  Always
 starts with `@prefix` declarations.  Results are cached by content hash in

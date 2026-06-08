@@ -187,7 +187,10 @@ cv-to-rdf my_cv.pdf --output graph.ttl
 cv-to-rdf my_cv.pdf --context "Energy sector, output in English."
 cv-to-rdf my_cv.pdf --model claude-opus-4-7 --max-tokens 80000
 cv-to-rdf my_cv.pdf --validate --quiet
+cv-to-rdf my_cv.pdf --overwrite                  # replace existing .ttl
 ```
+
+By default, if the output `.ttl` already exists, `cv-to-rdf` exits without calling the API.  Pass `--overwrite` to replace it.
 
 The API key can be passed via environment variable (recommended) or flag:
 
