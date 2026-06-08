@@ -34,6 +34,8 @@ This project converts a CV (PDF or plain text) into **Turtle RDF** using the [An
 
 The graph captures not just employment history and skills, but also **project-level detail**: client names, roles, activities, benefits, and domain tags — plus MOOCs, certifications, personal projects, and publications.
 
+> **LLM / agent users:** see [`LLM.md`](LLM.md) for a concise guide covering all CLIs, the Python API, pipeline orchestration, output structure, and common gotchas.
+
 ---
 
 ## Who is this for?
