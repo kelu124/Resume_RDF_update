@@ -7,7 +7,7 @@
 #   ./process_cvs.sh <folder> [options]
 #
 # Options:
-#   -o, --output FILE     Output TTL file  (default: <folder>/master_cv.ttl)
+#   -o, --output FILE     Output TTL file  (default: <folder>/__master_cv.ttl)
 #   -c, --context TEXT    Extra context hint for the parser
 #   -s, --strategy STR    Merge strategy: longest|concat|llm  (default: llm)
 #   -h, --help            Show this help
@@ -27,7 +27,7 @@
 set -uo pipefail
 
 # ── defaults ──────────────────────────────────────────────────────────────────
-OUTPUT=""   # resolved to <folder>/master_cv.ttl after arg parsing
+OUTPUT=""   # resolved to <folder>/__master_cv.ttl after arg parsing
 CONTEXT=""
 STRATEGY="llm"
 FOLDER=""
@@ -70,9 +70,9 @@ if [[ ! -d "$FOLDER" ]]; then
     exit 1
 fi
 
-# Default output: master_cv.ttl inside the input folder
+# Default output: __master_cv.ttl inside the input folder
 if [[ -z "$OUTPUT" ]]; then
-    OUTPUT="$FOLDER/master_cv.ttl"
+    OUTPUT="$FOLDER/__master_cv.ttl"
 fi
 
 # ── load API key from .env if not already in environment ──────────────────────
@@ -188,7 +188,7 @@ fi
 CV_RECONCILE=$(command -v cv-reconcile 2>/dev/null || true)
 if [[ -n "$CV_RECONCILE" && ${#TTL_FILES[@]} -gt 1 ]]; then
     echo "Running cross-file entity reconciliation…"
-    "$CV_RECONCILE" "${TTL_FILES[@]}" --yes
+    "$CV_RECONCILE" "${TTL_FILES[@]}"
     echo "Done.  IRI reconciliation applied to source TTLs."
 elif [[ ${#TTL_FILES[@]} -le 1 ]]; then
     true  # single file — no cross-file reconciliation needed
