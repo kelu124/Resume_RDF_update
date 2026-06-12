@@ -136,6 +136,35 @@ startDate, activitiesPerformed, benefitsDelivered, at least one usesSkill link).
 
 ---
 
+### `cv-consolidate` — rewrite IRIs using a synonym mapping
+
+```
+cv-consolidate <FILE.ttl> --synonyms <SYNONYMS.ttl> [--output OUT.ttl] [--quiet]
+```
+
+| Param | Default | Notes |
+|-------|---------|-------|
+| `FILE.ttl` | — | Input Turtle file to rewrite |
+| `--synonyms` / `-s` | — | Turtle file declaring `owl:sameAs` pairs (required) |
+| `--output` / `-o` | `<stem>_consolidated.ttl` | Output path; use same path as input for in-place rewrite |
+| `--quiet` / `-q` | off | Suppress progress output |
+
+**Synonyms file format:**
+
+```turtle
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix :   <http://example.org/cv/> .
+
+:proj_old    owl:sameAs :proj_canonical .
+:company_old owl:sameAs :company_canonical .
+```
+
+The *subject* IRI is replaced by the *object* (canonical) IRI everywhere in the graph — subject, predicate, and object positions are all rewritten.  Returns a count of affected triples.
+
+**Use case:** when you have duplicate IRIs within a single TTL and know the canonical form.  For cross-file deduplication, use `cv-reconcile` instead.
+
+---
+
 ### `cv-update` — patch a single field
 
 ```
@@ -178,6 +207,8 @@ from resume_rdf import (
     generate_graph_from_file,   # str|Path → (turtle_str, usage_dict)
     generate_graph_from_bytes,  # bytes, filename → (turtle_str, usage_dict)
     consolidate_ttls,           # list[Path], output_path → MergeStats
+    consolidate_synonyms,       # input_ttl, synonyms_ttl → int (triples rewritten)
+    load_synonym_map,           # synonyms_ttl → dict[URIRef, URIRef]
     reconcile_interactive,      # list[Path] → int (merges applied)
     ttl_to_markdown,            # str|Path → str
     audit_experience,           # str|Path → list[Question]
@@ -198,6 +229,13 @@ Returns `(turtle_string, usage_dict)`.  Result is cached; safe to call repeatedl
 
 **`reconcile_interactive(ttl_files, *, threshold, dry_run, auto_yes, master_file)`**
 `auto_yes=True` for batch use.  Returns number of merges applied.
+
+**`consolidate_synonyms(input_file, synonyms_file, output_file=None, *, verbose=False)`**
+Rewrites IRIs in `input_file` according to `owl:sameAs` mappings in `synonyms_file`.
+Returns count of affected triples.  `output_file` defaults to `<stem>_consolidated.ttl`.
+
+**`load_synonym_map(synonyms_path)`**
+Parses a synonyms TTL and returns `{old_IRI: canonical_IRI}`.
 
 **`audit_experience(path)`** returns `list[Question]` where each `Question` has
 `.slug`, `.field`, `.question` attributes.

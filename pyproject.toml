@@ -32,7 +32,8 @@ cv-audit     = "resume_rdf.qa:audit_main"
 cv-update    = "resume_rdf.qa:update_main"
 cv-graph     = "resume_rdf.viz:main"
 cv-to-md     = "resume_rdf.export:main"
-cv-merge     = "resume_rdf.merge:main"
+cv-merge        = "resume_rdf.merge:main"
+cv-consolidate  = "resume_rdf.consolidate:main"
 
 [project.urls]
 Repository = "https://github.com/kelu124/Resume_RDF_update"

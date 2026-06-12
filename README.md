@@ -388,6 +388,36 @@ Fields checked on **`cvx:Project`** nodes: `projectName`, `projectDescription`,
 `roleTitle`, `startDate`, `activitiesPerformed`, `benefitsDelivered`,
 `usesSkill` (at least one link).
 
+### `cv-consolidate` — rewrite IRIs using a synonym mapping
+
+```bash
+cv-consolidate graph.ttl --synonyms synonyms.ttl
+cv-consolidate graph.ttl --synonyms synonyms.ttl --output fixed.ttl
+```
+
+Applies a predefined synonym mapping to a Turtle file, replacing duplicate or
+variant IRIs with their canonical form.  The synonyms file is a small Turtle
+document where each `owl:sameAs` triple maps an old IRI (subject) to its
+canonical replacement (object):
+
+```turtle
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix :   <http://example.org/cv/> .
+
+:proj_old    owl:sameAs :proj_canonical .
+:company_old owl:sameAs :company_canonical .
+```
+
+Every occurrence of the old IRI — subject, predicate, or object — is rewritten.
+Output defaults to `<stem>_consolidated.ttl`; pass `--output` to redirect.
+
+**When to use:**
+- You have duplicate IRIs *within a single TTL* and know which is canonical.
+- You want to apply a pre-authored mapping without interactive prompting.
+- Use `cv-reconcile` instead when discovering duplicates *across multiple files*.
+
+---
+
 ### `cv-update` — patch a single field
 
 ```bash

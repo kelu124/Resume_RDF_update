@@ -21,6 +21,7 @@ cache       file-based SHA-256 response cache (used by api and merge)
 cli         cv-to-rdf command-line entry-point
 data        dataset download, load_records, iter_records
 export      ttl_to_markdown  (cv-to-md CLI)
+consolidate consolidate_synonyms — IRI synonym rewriting  (cv-consolidate CLI)
 merge       consolidate_ttls — same-person TTL merger  (cv-merge CLI)
 ontology    SYSTEM_PROMPT + NAMESPACES constants
 parsing     count_triples, extract_person_name, validate_turtle
@@ -63,6 +64,10 @@ from resume_rdf.qa import (
 )
 from resume_rdf.viz import visualize_cv
 from resume_rdf.export import ttl_to_markdown
+from resume_rdf.consolidate import (
+    consolidate_synonyms,
+    load_synonym_map,
+)
 from resume_rdf.merge import (
     MergeStats,
     consolidate_ttls,
@@ -104,6 +109,9 @@ __all__ = [
     "visualize_cv",
     # export
     "ttl_to_markdown",
+    # IRI synonym consolidation
+    "consolidate_synonyms",
+    "load_synonym_map",
     # merge / consolidation
     "consolidate_ttls",
     "MergeStats",
