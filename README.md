@@ -76,6 +76,7 @@ resume_rdf/                 ← importable Python library
 ├── cli.py                  cv-to-rdf entry-point
 ├── data.py                 dataset download + iteration helpers
 ├── export.py               ttl_to_markdown  /  cv-to-md CLI
+├── consolidate.py          consolidate_synonyms  /  cv-consolidate CLI
 ├── merge.py                consolidate_ttls  /  cv-merge CLI
 ├── ontology.py             SYSTEM_PROMPT + namespace constants
 ├── parsing.py              Turtle helpers (count_triples, extract_person_name …)
@@ -176,6 +177,7 @@ After `pip install .` seven CLI commands are available:
 | `cv-update` | `[qa]` | Patch a single field value in a TTL |
 | `cv-reconcile` | `[reconcile]` | Unify near-duplicate IRIs across multiple TTLs |
 | `cv-merge` | `[merge]` | Merge same-person TTLs into one enriched file |
+| `cv-consolidate` | `[validate]` | Rewrite duplicate IRIs within a TTL using a synonym mapping |
 | `cv-graph` | `[viz]` | Render a TTL as an interactive HTML graph |
 | `cv-to-md` | `[export]` | Convert a TTL back to readable Markdown |
 
@@ -388,49 +390,6 @@ Fields checked on **`cvx:Project`** nodes: `projectName`, `projectDescription`,
 `roleTitle`, `startDate`, `activitiesPerformed`, `benefitsDelivered`,
 `usesSkill` (at least one link).
 
-### `cv-consolidate` — rewrite IRIs using a synonym mapping
-
-Synonyms can be supplied inline or via a Turtle file — or both together.
-
-**Inline (`--sameas`):** first value is canonical, rest are merged into it:
-
-```bash
-cv-consolidate cv.ttl --sameas wh_danone_bop_2011 wh_danone_bop_india wh_danone_bop_india_2011
-
-# Multiple groups in one call
-cv-consolidate cv.ttl --sameas canonical1 dup1 dup2 --sameas canonical2 dup3
-
-# With explicit output path
-cv-consolidate cv.ttl --sameas proj_canonical proj_old --output cv_fixed.ttl
-```
-
-Bare slugs are expanded to `<http://example.org/cv/<slug>>` automatically.
-
-**Synonyms file (`--synonyms`):** a Turtle document where subject = old IRI,
-object = canonical:
-
-```turtle
-@prefix owl: <http://www.w3.org/2002/07/owl#> .
-@prefix :   <http://example.org/cv/> .
-
-:proj_old    owl:sameAs :proj_canonical .
-:company_old owl:sameAs :company_canonical .
-```
-
-```bash
-cv-consolidate graph.ttl --synonyms synonyms.ttl
-cv-consolidate graph.ttl --synonyms synonyms.ttl --output fixed.ttl
-```
-
-Every occurrence of a duplicate IRI — subject, predicate, or object — is
-rewritten to the canonical IRI.  Output defaults to `<stem>_consolidated.ttl`.
-
-**When to use:**
-- You have duplicate IRIs *within a single TTL* and know which is canonical.
-- Use `cv-reconcile` instead when *discovering* duplicates across multiple files.
-
----
-
 ### `cv-update` — patch a single field
 
 ```bash
@@ -569,6 +528,89 @@ The `llm` strategy only calls the API for **description-type predicates**
 `activitiesPerformed`, `roleTitle`, `projectName`, `jobTitle`).
 Results are cached under `cache/merge_<sha256>.json` alongside the CV
 parser cache — re-running the same merge is free.
+
+---
+
+## IRI synonym consolidation
+
+When you know that two IRIs in a single TTL file represent the same entity
+(a duplicate slug from a re-parse, a manual edit, or a known alias), use
+`cv-consolidate` to rewrite all occurrences to a single canonical IRI.
+
+Requires `rdflib`: `pip install "resume-rdf[validate]"`.
+
+### CLI
+
+**Inline (`--sameas`):** first value is canonical, rest are merged into it:
+
+```bash
+# One group — three variant IRIs unified to one canonical
+cv-consolidate cv.ttl --sameas wh_danone_bop_2011 wh_danone_bop_india wh_danone_bop_india_2011
+
+# Multiple groups in one call
+cv-consolidate cv.ttl --sameas canonical1 dup1 dup2 --sameas canonical2 dup3
+
+# With explicit output path (default: <stem>_consolidated.ttl)
+cv-consolidate cv.ttl --sameas proj_canonical proj_old --output cv_fixed.ttl
+```
+
+Bare slugs (e.g. `wh_danone_bop_2011`) are expanded to
+`<http://example.org/cv/wh_danone_bop_2011>` automatically.
+
+**Synonyms file (`--synonyms`):** a Turtle document where subject = old IRI,
+object = canonical:
+
+```turtle
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix :   <http://example.org/cv/> .
+
+:proj_old    owl:sameAs :proj_canonical .
+:company_old owl:sameAs :company_canonical .
+```
+
+```bash
+cv-consolidate graph.ttl --synonyms synonyms.ttl
+cv-consolidate graph.ttl --synonyms synonyms.ttl --output fixed.ttl
+```
+
+Both `--sameas` and `--synonyms` can be combined in one call.  Every occurrence
+of a duplicate IRI — subject, predicate, or object — is rewritten.
+
+### Python API
+
+```python
+from resume_rdf import consolidate_synonyms, load_synonym_map
+from rdflib import URIRef
+
+# Inline mapping
+mapping = {
+    URIRef("http://example.org/cv/wh_danone_bop_india"): URIRef("http://example.org/cv/wh_danone_bop_2011"),
+}
+n = consolidate_synonyms("cv.ttl", extra_mapping=mapping, verbose=True)
+print(f"{n} triple(s) rewritten")
+
+# From a synonyms file
+n = consolidate_synonyms("cv.ttl", "synonyms.ttl", "cv_fixed.ttl")
+
+# Load the mapping dict without applying it
+m = load_synonym_map("synonyms.ttl")
+```
+
+### `cv-merge` vs `cv-consolidate`
+
+| | `cv-merge` | `cv-consolidate` |
+|---|---|---|
+| **Input** | Two or more TTL files | One TTL file |
+| **Use case** | Same person, multiple CV versions | Duplicate IRIs within one file |
+| **Conflict resolution** | `longest` / `concat` / `llm` strategies | Raw IRI rewrite — both values survive if they differ |
+| **Discovery** | Fuzzy-matches entities automatically | You supply the mapping explicitly |
+| **When both IRIs have data** | ✓ Safe — merges intelligently | Conflicting literals both survive (multi-valued) |
+| **When one IRI is empty/spurious** | Overkill | ✓ Ideal |
+
+Rule of thumb: if you already know which IRIs are the same and one of them is
+spurious or a near-copy with identical values, use `cv-consolidate`.  If two
+fully-authored descriptions of the same entity need intelligent merging, use
+`cv-merge`.
 
 ---
 
