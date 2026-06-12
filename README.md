@@ -390,15 +390,24 @@ Fields checked on **`cvx:Project`** nodes: `projectName`, `projectDescription`,
 
 ### `cv-consolidate` — rewrite IRIs using a synonym mapping
 
+Synonyms can be supplied inline or via a Turtle file — or both together.
+
+**Inline (`--sameas`):** first value is canonical, rest are merged into it:
+
 ```bash
-cv-consolidate graph.ttl --synonyms synonyms.ttl
-cv-consolidate graph.ttl --synonyms synonyms.ttl --output fixed.ttl
+cv-consolidate cv.ttl --sameas wh_danone_bop_2011 wh_danone_bop_india wh_danone_bop_india_2011
+
+# Multiple groups in one call
+cv-consolidate cv.ttl --sameas canonical1 dup1 dup2 --sameas canonical2 dup3
+
+# With explicit output path
+cv-consolidate cv.ttl --sameas proj_canonical proj_old --output cv_fixed.ttl
 ```
 
-Applies a predefined synonym mapping to a Turtle file, replacing duplicate or
-variant IRIs with their canonical form.  The synonyms file is a small Turtle
-document where each `owl:sameAs` triple maps an old IRI (subject) to its
-canonical replacement (object):
+Bare slugs are expanded to `<http://example.org/cv/<slug>>` automatically.
+
+**Synonyms file (`--synonyms`):** a Turtle document where subject = old IRI,
+object = canonical:
 
 ```turtle
 @prefix owl: <http://www.w3.org/2002/07/owl#> .
@@ -408,13 +417,17 @@ canonical replacement (object):
 :company_old owl:sameAs :company_canonical .
 ```
 
-Every occurrence of the old IRI — subject, predicate, or object — is rewritten.
-Output defaults to `<stem>_consolidated.ttl`; pass `--output` to redirect.
+```bash
+cv-consolidate graph.ttl --synonyms synonyms.ttl
+cv-consolidate graph.ttl --synonyms synonyms.ttl --output fixed.ttl
+```
+
+Every occurrence of a duplicate IRI — subject, predicate, or object — is
+rewritten to the canonical IRI.  Output defaults to `<stem>_consolidated.ttl`.
 
 **When to use:**
 - You have duplicate IRIs *within a single TTL* and know which is canonical.
-- You want to apply a pre-authored mapping without interactive prompting.
-- Use `cv-reconcile` instead when discovering duplicates *across multiple files*.
+- Use `cv-reconcile` instead when *discovering* duplicates across multiple files.
 
 ---
 

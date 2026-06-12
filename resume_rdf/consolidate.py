@@ -3,10 +3,11 @@ resume_rdf.consolidate
 ======================
 ``cv-consolidate`` CLI — apply a synonym IRI mapping to a Turtle RDF file.
 
-The synonyms file is a Turtle document containing ``owl:sameAs`` triples.
-The *subject* is the old/duplicate IRI; the *object* is the canonical IRI
-that replaces it.  Every occurrence of the old IRI — in subject, predicate,
-or object position — is rewritten to the canonical IRI::
+Synonyms can be supplied via a Turtle file or inline on the command line.
+
+**Synonyms file** (``--synonyms``): a Turtle document containing
+``owl:sameAs`` triples.  The *subject* is the old/duplicate IRI; the
+*object* is the canonical IRI that replaces it::
 
     @prefix owl: <http://www.w3.org/2002/07/owl#> .
     @prefix : <http://example.org/cv/> .
@@ -14,16 +15,29 @@ or object position — is rewritten to the canonical IRI::
     :proj_duplicate  owl:sameAs :proj_canonical .
     :company_variant owl:sameAs :company_canonical .
 
+**Inline synonyms** (``--sameas``): the first value is the canonical IRI,
+the rest are the duplicates merged into it::
+
+    cv-consolidate cv.ttl --sameas wh_danone_bop_2011 wh_danone_bop_india wh_danone_bop_india_2011
+
+Bare slugs are expanded to ``http://example.org/cv/<slug>``.  Both flags
+may be combined in the same invocation.  Every occurrence of a duplicate
+IRI — in subject, predicate, or object position — is rewritten.
+
 Usage::
 
     cv-consolidate graph.ttl --synonyms synonyms.ttl
     cv-consolidate graph.ttl --synonyms synonyms.ttl --output fixed.ttl
+    cv-consolidate cv.ttl --sameas canonical dup1 dup2
+    cv-consolidate cv.ttl --sameas canonical1 dup1 --sameas canonical2 dup3
 """
 
 import argparse
 import sys
 import textwrap
 from pathlib import Path
+
+_BASE_NS = "http://example.org/cv/"
 
 
 def _require_rdflib() -> None:
@@ -35,6 +49,15 @@ def _require_rdflib() -> None:
             "  pip install rdflib\n"
             "  or: pip install 'resume-rdf[validate]'"
         )
+
+
+def _resolve_iri(value: str) -> "URIRef":
+    """Expand a slug or full IRI string to a URIRef."""
+    from rdflib import URIRef
+    v = value.strip("<>")
+    if v.startswith(("http://", "https://", "urn:")):
+        return URIRef(v)
+    return URIRef(_BASE_NS + v)
 
 
 def load_synonym_map(synonyms_path: "str | Path") -> dict:
@@ -53,12 +76,16 @@ def load_synonym_map(synonyms_path: "str | Path") -> dict:
 
 def consolidate_synonyms(
     input_file: "str | Path",
-    synonyms_file: "str | Path",
+    synonyms_file: "str | Path | None" = None,
     output_file: "str | Path | None" = None,
     *,
+    extra_mapping: "dict | None" = None,
     verbose: bool = False,
 ) -> int:
-    """Rewrite IRIs in *input_file* according to *synonyms_file*.
+    """Rewrite IRIs in *input_file* according to the combined synonym mapping.
+
+    Sources are merged: *synonyms_file* (``owl:sameAs`` Turtle) and/or
+    *extra_mapping* (pre-built ``{old_URIRef: canonical_URIRef}`` dict).
 
     Returns the number of triples that contained at least one rewritten IRI.
     Output defaults to ``<stem>_consolidated.ttl`` in the same directory.
@@ -72,10 +99,15 @@ def consolidate_synonyms(
     else:
         output_path = Path(output_file)
 
-    mapping = load_synonym_map(synonyms_file)
+    mapping: dict = {}
+    if synonyms_file is not None:
+        mapping.update(load_synonym_map(synonyms_file))
+    if extra_mapping:
+        mapping.update(extra_mapping)
+
     if not mapping:
         if verbose:
-            print("No owl:sameAs mappings found in synonyms file — nothing to do.")
+            print("No synonym mappings found — nothing to do.")
         return 0
 
     if verbose:
@@ -109,28 +141,40 @@ def main(argv: "list[str] | None" = None) -> None:
         prog="cv-consolidate",
         description=(
             "Rewrite IRIs in a Turtle RDF file using a synonym mapping.\n"
-            "The synonyms file declares owl:sameAs pairs; the subject IRI is\n"
-            "replaced by the object (canonical) IRI everywhere in the graph."
+            "Supply synonyms via a Turtle file (--synonyms), inline (--sameas),\n"
+            "or both.  Bare slugs in --sameas are expanded to the default\n"
+            "namespace <http://example.org/cv/>."
         ),
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=textwrap.dedent("""\
-            Synonyms file format (Turtle):
+            Inline form (--sameas):
+              first value = canonical IRI, rest = duplicates merged into it
+
+              cv-consolidate cv.ttl --sameas wh_danone_2011 wh_danone_india wh_danone_india_2011
+              cv-consolidate cv.ttl --sameas canonical1 dup1 dup2 --sameas canonical2 dup3
+
+            Synonyms file form (--synonyms):
               @prefix owl: <http://www.w3.org/2002/07/owl#> .
               @prefix :   <http://example.org/cv/> .
-
               :proj_old    owl:sameAs :proj_canonical .
               :company_old owl:sameAs :company_canonical .
 
-            Examples:
-              cv-consolidate graph.ttl --synonyms synonyms.ttl
               cv-consolidate graph.ttl --synonyms synonyms.ttl --output fixed.ttl
-              cv-consolidate graph.ttl -s synonyms.ttl -o fixed.ttl --quiet
+
+            Both flags may be combined in one invocation.
         """),
     )
     parser.add_argument("ttl_file", help="Input Turtle file to rewrite.")
     parser.add_argument(
-        "--synonyms", "-s", required=True, metavar="FILE",
+        "--synonyms", "-s", default=None, metavar="FILE",
         help="Turtle file declaring owl:sameAs synonym pairs.",
+    )
+    parser.add_argument(
+        "--sameas", action="append", nargs="+", metavar="IRI",
+        help=(
+            "CANONICAL DUP [DUP ...]: merge one or more duplicate IRIs into "
+            "a canonical IRI.  Repeat the flag for multiple groups."
+        ),
     )
     parser.add_argument(
         "--output", "-o", default=None, metavar="FILE",
@@ -143,15 +187,32 @@ def main(argv: "list[str] | None" = None) -> None:
     args = parser.parse_args(argv)
     verbose = not args.quiet
 
+    if not args.synonyms and not args.sameas:
+        parser.error("provide at least one of --synonyms or --sameas")
+
     if not Path(args.ttl_file).is_file():
         sys.exit(f"Error: file not found: {args.ttl_file}")
-    if not Path(args.synonyms).is_file():
+    if args.synonyms and not Path(args.synonyms).is_file():
         sys.exit(f"Error: synonyms file not found: {args.synonyms}")
+
+    # Build inline mapping from --sameas groups
+    extra_mapping: dict = {}
+    if args.sameas:
+        for group in args.sameas:
+            if len(group) < 2:
+                parser.error(
+                    f"--sameas needs at least 2 IRIs (canonical + 1 duplicate), got: {group}"
+                )
+            canonical = _resolve_iri(group[0])
+            for dup in group[1:]:
+                dup_iri = _resolve_iri(dup)
+                extra_mapping[dup_iri] = canonical
 
     n = consolidate_synonyms(
         args.ttl_file,
         args.synonyms,
         args.output,
+        extra_mapping=extra_mapping or None,
         verbose=verbose,
     )
 

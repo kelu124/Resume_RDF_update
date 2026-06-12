@@ -139,17 +139,32 @@ startDate, activitiesPerformed, benefitsDelivered, at least one usesSkill link).
 ### `cv-consolidate` — rewrite IRIs using a synonym mapping
 
 ```
-cv-consolidate <FILE.ttl> --synonyms <SYNONYMS.ttl> [--output OUT.ttl] [--quiet]
+cv-consolidate <FILE.ttl> (--synonyms <FILE> | --sameas CANONICAL DUP [DUP ...]) [--output OUT.ttl] [--quiet]
 ```
 
 | Param | Default | Notes |
 |-------|---------|-------|
 | `FILE.ttl` | — | Input Turtle file to rewrite |
-| `--synonyms` / `-s` | — | Turtle file declaring `owl:sameAs` pairs (required) |
-| `--output` / `-o` | `<stem>_consolidated.ttl` | Output path; use same path as input for in-place rewrite |
+| `--synonyms` / `-s` | — | Turtle file declaring `owl:sameAs` pairs |
+| `--sameas` | — | `CANONICAL DUP [DUP ...]` — inline synonym group; repeatable |
+| `--output` / `-o` | `<stem>_consolidated.ttl` | Output path; pass input path for in-place rewrite |
 | `--quiet` / `-q` | off | Suppress progress output |
 
-**Synonyms file format:**
+At least one of `--synonyms` or `--sameas` is required; both may be combined.
+
+**Inline form (`--sameas`):**
+
+```bash
+# First arg = canonical; rest = duplicates merged into it
+cv-consolidate cv.ttl --sameas wh_danone_bop_2011 wh_danone_bop_india wh_danone_bop_india_2011
+
+# Multiple groups in one call
+cv-consolidate cv.ttl --sameas canonical1 dup1 dup2 --sameas canonical2 dup3
+```
+
+Bare slugs (e.g. `wh_danone_bop_2011`) are auto-expanded to `<http://example.org/cv/wh_danone_bop_2011>`.
+
+**Synonyms file form (`--synonyms`):**, subject = old IRI, object = canonical:
 
 ```turtle
 @prefix owl: <http://www.w3.org/2002/07/owl#> .
@@ -159,9 +174,9 @@ cv-consolidate <FILE.ttl> --synonyms <SYNONYMS.ttl> [--output OUT.ttl] [--quiet]
 :company_old owl:sameAs :company_canonical .
 ```
 
-The *subject* IRI is replaced by the *object* (canonical) IRI everywhere in the graph — subject, predicate, and object positions are all rewritten.  Returns a count of affected triples.
+All triple positions (subject, predicate, object) are rewritten.  Returns a count of affected triples.
 
-**Use case:** when you have duplicate IRIs within a single TTL and know the canonical form.  For cross-file deduplication, use `cv-reconcile` instead.
+**Use case:** known duplicate IRIs within a single TTL.  For cross-file discovery, use `cv-reconcile` instead.
 
 ---
 
